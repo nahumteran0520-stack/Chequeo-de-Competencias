@@ -69,17 +69,24 @@
     async function cargarDatos() {
       try {
         const response = await fetch(APPS_SCRIPT_URL);
-        if (!response.ok) throw new Error("Error en la respuesta");
-        todosLosProductos = await response.json();
+        if (!response.ok) throw new Error("Respuesta no OK: " + response.status);
+        
+        const texto = await response.text(); // Leemos como texto primero para verificar
+        try {
+          todosLosProductos = JSON.parse(texto);
+        } catch (e) {
+          throw new Error("El resultado no es un JSON válido: " + texto.substring(0, 100));
+        }
         
         generarBotonesCategorias();
         aplicarFiltros();
       } catch (error) {
-        console.error("Error al cargar:", error);
+        console.error("Detalle del error:", error);
         document.getElementById("productsContainer").innerHTML = `
           <div class="col-12 text-center text-danger my-5">
-            <h5>Error al cargar los datos.</h5>
-            <p>Asegúrate de que la API de Apps Script esté bien configurada y pública.</p>
+            <h5>⚠️ Error al cargar los datos</h5>
+            <p>${error.message}</p>
+            <p class="small text-muted">Verifica que el script esté publicado como 'Cualquier persona'.</p>
           </div>`;
       }
     }
