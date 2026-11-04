@@ -27,6 +27,17 @@
       </div>
     </div>
 
+    <!-- Botones de Filtro por Estado (Pendientes / Chequeados) -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="btn-group w-100 shadow-sm" role="group">
+          <button type="button" class="btn btn-primary active" id="btn-estado-todos" onclick="filtrarPorEstado('todos')">Todos</button>
+          <button type="button" class="btn btn-outline-warning text-dark fw-semibold" id="btn-estado-pendientes" onclick="filtrarPorEstado('pendientes')">Pendientes</button>
+          <button type="button" class="btn btn-outline-success fw-semibold" id="btn-estado-chequeados" onclick="filtrarPorEstado('chequeados')">Chequeados</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Filtros de Categoría -->
     <div class="row mb-3">
       <div class="col-12 d-flex flex-wrap gap-1" id="categoryContainer"></div>
@@ -47,6 +58,7 @@
     let todosLosProductos = [];
     let productosFiltrados = [];
     let categoriaActual = "Todas";
+    let estadoFiltroActual = "todos"; // 'todos', 'pendientes', 'chequeados'
 
     document.addEventListener("DOMContentLoaded", () => {
       cargarDatos();
@@ -71,6 +83,17 @@
       }
     }
 
+    function filtrarPorEstado(estado) {
+      estadoFiltroActual = estado;
+      
+      // Actualizar estilos visuales de los botones de estado
+      document.getElementById("btn-estado-todos").className = `btn ${estado === 'todos' ? 'btn-primary' : 'btn-outline-primary'}`;
+      document.getElementById("btn-estado-pendientes").className = `btn ${estado === 'pendientes' ? 'btn-warning text-dark fw-bold' : 'btn-outline-warning text-dark fw-semibold'}`;
+      document.getElementById("btn-estado-chequeados").className = `btn ${estado === 'chequeados' ? 'btn-success fw-bold' : 'btn-outline-success fw-semibold'}`;
+
+      aplicarFiltros();
+    }
+
     function generarBotonesCategorias() {
       const categorias = ["Todas", ...new Set(todosLosProductos.map(p => p.categoria).filter(c => c))];
       const container = document.getElementById("categoryContainer");
@@ -78,12 +101,12 @@
 
       categorias.forEach(cat => {
         const btn = document.createElement("button");
-        btn.className = `btn btn-sm ${cat === categoriaActual ? 'btn-primary' : 'btn-outline-secondary'}`;
+        btn.className = `btn btn-sm ${cat === categoriaActual ? 'btn-dark' : 'btn-outline-secondary'}`;
         btn.textContent = cat;
         btn.onclick = () => {
           categoriaActual = cat;
           document.querySelectorAll("#categoryContainer button").forEach(b => b.className = 'btn btn-sm btn-outline-secondary');
-          btn.className = 'btn btn-sm btn-primary';
+          btn.className = 'btn btn-sm btn-dark';
           aplicarFiltros();
         };
         container.appendChild(btn);
@@ -97,7 +120,16 @@
         const coincideCat = categoriaActual === "Todas" || String(prod.categoria) === String(categoriaActual);
         const coincideText = String(prod.codigo || "").toLowerCase().includes(query) || 
                              String(prod.descripcion || "").toLowerCase().includes(query);
-        return coincideCat && coincideText;
+        
+        // Filtro por estado (todos, pendientes, chequeados)
+        let coincideEstado = true;
+        if (estadoFiltroActual === "pendientes") {
+          coincideEstado = !prod.chequeado;
+        } else if (estadoFiltroActual === "chequeados") {
+          coincideEstado = prod.chequeado;
+        }
+
+        return coincideCat && coincideText && coincideEstado;
       });
 
       renderizarProductos();
@@ -108,7 +140,7 @@
       container.innerHTML = "";
 
       if (productosFiltrados.length === 0) {
-        container.innerHTML = `<div class="col-12 text-center text-muted my-4">No se encontraron artículos.</div>`;
+        container.innerHTML = `<div class="col-12 text-center text-muted my-4">No se encontraron artículos con los filtros seleccionados.</div>`;
         return;
       }
 
@@ -116,7 +148,6 @@
         const col = document.createElement("div");
         col.className = "col-12 mb-3";
 
-        // Evaluamos si ya está chequeado según los datos nuevos
         const esChequeado = prod.chequeado;
         const badgeEstado = esChequeado 
           ? `<span class="badge bg-success ms-2">✔ CHEQUEADO (${prod.precioRegistrado})</span>` 
@@ -204,7 +235,8 @@
         const data = await res.json();
         if (data.status === "success") {
           alert(`¡Guardado exitosamente!`);
-          document.getElementById(`pvp-${codigo}`).value = "";
+          // Recargamos los datos para actualizar el estado visual a chequeado automáticamente
+          cargarDatos();
         } else {
           alert("Error al guardar: " + data.message);
         }
