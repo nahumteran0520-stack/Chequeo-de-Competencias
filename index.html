@@ -53,18 +53,19 @@
       document.getElementById("searchInput").addEventListener("input", aplicarFiltros);
     });
 
-    async function cargarDatos() {
+   async function cargarDatos() {
       try {
         const response = await fetch(APPS_SCRIPT_URL);
         if (!response.ok) throw new Error("Error en la respuesta del servidor");
         
-        const texto = await response.text();
-        try {
-          todosLosProductos = JSON.parse(texto);
-        } catch (e) {
-          throw new Error("El servidor devolvió HTML en lugar de JSON. Verifica el despliegue de Apps Script.");
+        const data = await response.json();
+        
+        // Blindaje: si por alguna razón llega un error o no es un arreglo, evitamos el fallo
+        if (!Array.isArray(data)) {
+          throw new Error(data.error || "Formato de datos inválido desde el servidor");
         }
         
+        todosLosProductos = data;
         generarBotonesCategorias();
         aplicarFiltros();
       } catch (error) {
