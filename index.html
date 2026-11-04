@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chequeo de Competencia</title>
+  <style>
+    body { font-family: sans-serif; background: #f4f6f8; margin: 0; padding: 10px; color: #333; }
+    header { position: sticky; top: 0; background: #f4f6f8; padding-bottom: 8px; z-index: 10; }
+    input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 8px; box-sizing: border-box; font-size: 14px; }
+    .categories-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; white-space: nowrap; }
+    .cat-btn { background: #e2e8f0; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; cursor: pointer; }
+    .cat-btn.active { background: #0056b3; color: white; }
+    .card { background: #fff; border-radius: 12px; padding: 12px; display: flex; gap: 12px; margin-bottom: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+    .card img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; background: #eee; }
+    .card-info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .code { font-size: 11px; background: #e9ecef; padding: 2px 6px; border-radius: 4px; font-weight: bold; width: fit-content; }
+    .title { font-size: 13px; font-weight: 600; margin: 4px 0; }
+    .row-inputs { display: flex; gap: 6px; margin-top: 6px; }
+    .btn-send { background: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<header>
+  <select id="selectCompetidor">
+    <option value="Mangocenter">Competidor: Mangocenter</option>
+    <option value="Casapro">Competidor: Casapro</option>
+  </select>
+  <input type="text" id="searchBox" placeholder="Buscar por código o descripción..." oninput="filtrarProductos()">
+  <div class="categories-bar" id="categoriesContainer"></div>
+</header>
+
+<main id="productsGrid">
+  <p style="text-align: center;">Cargando catálogo...</p>
+</main>
+
+<script>
+  const APPS_SCRIPT_URL = "AKfycbxzydC3SijrnM_luVtcic59rs5K2QYg4ouoIjwGxmHr0ipSgbaEJXA_6umar9JvmDUnhg"; // Reemplaza con tu URL real
+  let catalogo = [];
+  let categoriaActual = "Todas";
+
+  async function iniciar() {
+    try {
+      const res = await fetch(APPS_SCRIPT_URL);
+      catalogo = await res.json();
+      generarCategorias();
+      renderizar(catalogo);
+    } catch (e) {
+      document.getElementById("productsGrid").innerHTML = "<p>Error al cargar los datos.</p>";
+    }
+  }
+
+  function generarCategorias() {
+    const cats = ["Todas", ...new Set(catalogo.map(i => i.categoria).filter(Boolean))];
+    document.getElementById("categoriesContainer").innerHTML = cats.map(c => 
+      `<button class="cat-btn ${c === 'Todas' ? 'active' : ''}" onclick="filtrarCat('${c}', this)">${c}</button>`
+    ).join("");
+  }
+
+  function filtrarCat(cat, btn) {
+    categoriaActual = cat;
+    document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    aplicarFiltros();
+  }
+
+  function filtrarProductos() { aplicarFiltros(); }
+
+  function aplicarFiltros() {
+    const q = document.getElementById("searchBox").value.toLowerCase().trim();
+    const filtrados = catalogo.filter(i => 
+      (categoriaActual === "Todas" || i.categoria === categoriaActual) &&
+      (i.codigo.toLowerCase().includes(q) || i.descripcion.toLowerCase().includes(q))
+    );
+    renderizar(filtrados);
+  }
+
+  function renderizar(items) {
+    const grid = document.getElementById("productsGrid");
+    if (items.length === 0) {
+      grid.innerHTML = "<p style='text-align:center;'>No hay artículos.</p>";
+      return;
+    }
+    grid.innerHTML = items.map(i => `
+      <div class="card">
+        <img src="${i.foto}" alt="Foto" loading="lazy">
+        <div class="card-info">
+          <div>
+            <span class="code">${i.codigo}</span>
+            <div class="title">${i.descripcion}</div>
+          </div>
+          <div>
+            <div class="row-inputs">
+              <select id="rel-${i.codigo}">
+                <option value="Igual">Igual</option>
+                <option value="Similar">Similar</option>
+                <option value="SIN EXISTENCIA">Sin Existencia</option>
+              </select>
+              <input type="text" id="marca-${i.codigo}" placeholder="Marca chequeada" style="width:100px;">
+            </div>
+            <div class="row-inputs" style="margin-top:4px;">
+              <input type="number" step="0.01" id="pvp-${i.codigo}" placeholder="PVP c/ IVA" style="width:90px;">
+              <input type="text" id="pago-${i.codigo}" placeholder="Forma pago">
+              <button class="btn-send" onclick="guardar('${i.codigo}')">OK</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  async function guardar(codigo) {
+    const competidorNombre = document.getElementById("selectCompetidor").value;
+    const relacion = document.getElementById(`rel-${codigo}`).value;
+    const marcaChequeada = document.getElementById(`marca-${codigo}`).value;
+    const pvpIva = document.getElementById(`pvp-${codigo}`).value;
+    const formaPago = document.getElementById(`pago-${codigo}`).value;
+
+    if (relacion !== "SIN EXISTENCIA" && (!pvpIva || pvpIva <= 0)) {
+      alert("Ingrese un precio válido.");
+      return;
+    }
+
+    const payload = { codigo, competidorNombre, relacion, marcaChequeada, pvpIva, formaPago };
+
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      alert(`¡Guardado para ${codigo} en ${competidorNombre}!`);
+    } catch (e) {
+      alert("Error al enviar el dato.");
+    }
+  }
+
+  window.onload = iniciar;
+</script>
+</body>
+</html>
