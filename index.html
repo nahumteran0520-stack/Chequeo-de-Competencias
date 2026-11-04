@@ -6,14 +6,8 @@
   <title>Chequeo de Competencias</title>
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body { background-color: #f8f9fa; }
-    .card-articulo { transition: transform 0.2s; }
-    .card-articulo:hover { transform: translateY(-2px); }
-    .img-articulo { max-height: 110px; object-fit: contain; }
-  </style>
 </head>
-<body>
+<body class="bg-light">
 
   <div class="container my-3">
     <!-- Selector de Competidor -->
@@ -35,9 +29,7 @@
 
     <!-- Filtros de Categoría -->
     <div class="row mb-3">
-      <div class="col-12 d-flex flex-wrap gap-1" id="categoryContainer">
-        <!-- Se generan dinámicamente -->
-      </div>
+      <div class="col-12 d-flex flex-wrap gap-1" id="categoryContainer"></div>
     </div>
 
     <!-- Lista de Productos -->
@@ -50,7 +42,6 @@
   </div>
 
   <script>
-    // URL de tu Web App de Apps Script
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyUvqE_7IpalfOp5XXo2Jdh94ETQvD9B4aGOyLWnk8chf24vSL6rnMgBcv-JzasKuAF/exec";
 
     let todosLosProductos = [];
@@ -59,38 +50,164 @@
 
     document.addEventListener("DOMContentLoaded", () => {
       cargarDatos();
-
       document.getElementById("searchInput").addEventListener("input", aplicarFiltros);
-      document.getElementById("competidorSelect").addEventListener("change", () => {
-        // Al cambiar de competidor no se resetea la lista
-      });
     });
 
     async function cargarDatos() {
       try {
         const response = await fetch(APPS_SCRIPT_URL);
-        if (!response.ok) throw new Error("Respuesta no OK: " + response.status);
-        
-        const texto = await response.text(); // Leemos como texto primero para verificar
-        try {
-          todosLosProductos = JSON.parse(texto);
-        } catch (e) {
-          throw new Error("El resultado no es un JSON válido: " + texto.substring(0, 100));
-        }
+        if (!response.ok) throw new Error("Error en la respuesta del servidor");
+        todosLosProductos = await response.json();
         
         generarBotonesCategorias();
         aplicarFiltros();
       } catch (error) {
-        console.error("Detalle del error:", error);
+        console.error("Error al cargar:", error);
         document.getElementById("productsContainer").innerHTML = `
           <div class="col-12 text-center text-danger my-5">
-            <h5>⚠️ Error al cargar los datos</h5>
+            <h5>Error al cargar los datos</h5>
             <p>${error.message}</p>
-            <p class="small text-muted">Verifica que el script esté publicado como 'Cualquier persona'.</p>
           </div>`;
       }
     }
 
     function generarBotonesCategorias() {
       const categorias = ["Todas", ...new Set(todosLosProductos.map(p => p.categoria).filter(c => c))];
-      const container = document.getElementById("categoryContainer
+      const container = document.getElementById("categoryContainer");
+      container.innerHTML = "";
+
+      categorias.forEach(cat => {
+        const btn = document.createElement("button");
+        btn.className = `btn btn-sm ${cat === categoriaActual ? 'btn-primary' : 'btn-outline-secondary'}`;
+        btn.textContent = cat;
+        btn.onclick = () => {
+          categoriaActual = cat;
+          document.querySelectorAll("#categoryContainer button").forEach(b => b.className = 'btn btn-sm btn-outline-secondary');
+          btn.className = 'btn btn-sm btn-primary';
+          aplicarFiltros();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function aplicarFiltros() {
+      const query = document.getElementById("searchInput").value.toLowerCase().trim();
+
+      productosFiltrados = todosLosProductos.filter(prod => {
+        const coincideCat = categoriaActual === "Todas" || String(prod.categoria) === String(categoriaActual);
+        const coincideText = String(prod.codigo || "").toLowerCase().includes(query) || 
+                             String(prod.descripcion || "").toLowerCase().includes(query);
+        return coincideCat && coincideText;
+      });
+
+      renderizarProductos();
+    }
+
+    function renderizarProductos() {
+      const container = document.getElementById("productsContainer");
+      container.innerHTML = "";
+
+      if (productosFiltrados.length === 0) {
+        container.innerHTML = `<div class="col-12 text-center text-muted my-4">No se encontraron artículos.</div>`;
+        return;
+      }
+
+      productosFiltrados.forEach(prod => {
+        const col = document.createElement("div");
+        col.className = "col-12 mb-3";
+
+        col.innerHTML = `
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <div class="row align-items-center">
+                
+                <!-- Info principal -->
+                <div class="col-12">
+                  <span class="badge bg-secondary text-uppercase">${prod.codigo || ''}</span>
+                  <h6 class="fw-bold my-1">${prod.descripcion || ''}</h6>
+
+                  <div class="row g-2 mt-1">
+                    <!-- Relación -->
+                    <div class="col-12 col-md-3">
+                      <select class="form-select form-select-sm" id="relacion-${prod.codigo}">
+                        <option value="Igual">Igual</option>
+                        <option value="Similar">Similar</option>
+                      </select>
+                    </div>
+
+                    <!-- Marca chequeada -->
+                    <div class="col-12 col-md-4">
+                      <input type="text" class="form-control form-control-sm" id="marca-${prod.codigo}" placeholder="Marca chequeada">
+                    </div>
+
+                    <!-- PVP c/ IVA -->
+                    <div class="col-6 col-md-2">
+                      <input type="number" step="0.01" class="form-control form-control-sm" id="pvp-${prod.codigo}" placeholder="PVP c/ IVA">
+                    </div>
+
+                    <!-- Forma de pago -->
+                    <div class="col-6 col-md-3">
+                      <select class="form-select form-select-sm" id="pago-${prod.codigo}">
+                        <option value="Dolar bcv">Dólar bcv</option>
+                        <option value="Euro bcv">Euro bcv</option>
+                        <option value="Bolívares">Bolívares</option>
+                      </select>
+                    </div>
+
+                    <!-- Botón Enviar -->
+                    <div class="col-12 text-end mt-2">
+                      <button class="btn btn-success btn-sm w-100 fw-bold" onclick="guardarRegistro('${prod.codigo}')">Guardar Registro</button>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+          </div>
+        `;
+        container.appendChild(col);
+      });
+    }
+
+    async function guardarRegistro(codigo) {
+      const competidorNombre = document.getElementById("competidorSelect").value;
+      const relacion = document.getElementById(`relacion-${codigo}`).value;
+      const marcaChequeada = document.getElementById(`marca-${codigo}`).value;
+      const pvpIva = document.getElementById(`pvp-${codigo}`).value;
+      const formaPago = document.getElementById(`pago-${codigo}`).value;
+
+      if (!pvpIva) {
+        alert("Por favor ingresa un precio (PVP c/ IVA).");
+        return;
+      }
+
+      const payload = {
+        codigo: codigo,
+        competidorNombre: competidorNombre,
+        relacion: relacion,
+        marcaChequeada: marcaChequeada,
+        pvpIva: pvpIva,
+        formaPago: formaPago
+      };
+
+      try {
+        const res = await fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.status === "success") {
+          alert(`¡Guardado exitosamente!`);
+          document.getElementById(`pvp-${codigo}`).value = "";
+        } else {
+          alert("Error al guardar: " + data.message);
+        }
+      } catch (err) {
+        console.error("Error al enviar:", err);
+        alert("Ocurrió un error al enviar el precio.");
+      }
+    }
+  </script>
+</body>
+</html>
