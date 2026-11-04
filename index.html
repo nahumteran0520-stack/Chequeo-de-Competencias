@@ -57,7 +57,13 @@
       try {
         const response = await fetch(APPS_SCRIPT_URL);
         if (!response.ok) throw new Error("Error en la respuesta del servidor");
-        todosLosProductos = await response.json();
+        
+        const texto = await response.text();
+        try {
+          todosLosProductos = JSON.parse(texto);
+        } catch (e) {
+          throw new Error("El servidor devolvió HTML en lugar de JSON. Verifica el despliegue de Apps Script.");
+        }
         
         generarBotonesCategorias();
         aplicarFiltros();
@@ -121,7 +127,7 @@
             <div class="card-body">
               <div class="row align-items-center">
                 
-                <!-- Imagen de referencia -->
+                <!-- Imagen placeholder -->
                 <div class="col-3 col-md-2 text-center">
                   <img src="https://via.placeholder.com/80?text=Sin+Foto" 
                        alt="Foto" class="img-fluid rounded border" style="max-height: 70px; object-fit: contain;">
@@ -214,9 +220,6 @@
         alert("Ocurrió un error al enviar el precio.");
       }
     }
-  </script>
-</body>
-</html>
   </script>
 </body>
 </html>
