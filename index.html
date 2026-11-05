@@ -63,6 +63,7 @@
     document.addEventListener("DOMContentLoaded", () => {
       cargarDatos();
       document.getElementById("searchInput").addEventListener("input", aplicarFiltros);
+      document.getElementById("competidorSelect").addEventListener("change", cargarDatos);
     });
 
     async function cargarDatos() {
@@ -179,7 +180,7 @@
                   </div>
                 </div>
 
-                <!-- Controles Interactivos con Dólar BCV y Euro BCV -->
+                <!-- Controles Interactivos -->
                 <div class="row g-2 align-items-center">
                   <div class="col-md-3">
                     <input type="text" class="form-control form-control-sm" id="marca_${codigoProd}" placeholder="Marca" value="${prod.marca || ''}">
@@ -194,7 +195,7 @@
                     </select>
                   </div>
                   <div class="col-md-3">
-                    <button class="btn btn-success btn-sm w-100" onclick="guardarChequeo('${codigoProd}')">
+                    <button class="btn btn-success btn-sm w-100" id="btn_guardar_${codigoProd}" onclick="guardarChequeo('${codigoProd}')">
                       Guardar
                     </button>
                   </div>
@@ -213,8 +214,11 @@
       const precio = document.getElementById(`precio_${codigo}`).value;
       const formaPago = document.getElementById(`pago_${codigo}`).value;
       const competidor = document.getElementById("competidorSelect").value;
+      const btnGuardar = document.getElementById(`btn_guardar_${codigo}`);
 
-      // Usamos URLSearchParams para enviar los datos evitando bloqueos CORS de tipo POST complejo
+      btnGuardar.disabled = true;
+      btnGuardar.textContent = "Guardando...";
+
       const datos = new URLSearchParams({
         codigo: codigo,
         marca: marca,
@@ -230,10 +234,15 @@
       })
       .then(() => {
         alert("¡Guardado exitosamente!");
-        cargarDatos();
+        setTimeout(cargarDatos, 1000); // Espera 1 segundo para refrescar
       })
       .catch(err => {
         console.error("Error al guardar:", err);
         alert("Error al guardar los datos.");
+        btnGuardar.disabled = false;
+        btnGuardar.textContent = "Guardar";
       });
     }
+  </script>
+</body>
+</html>
