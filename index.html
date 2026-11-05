@@ -148,5 +148,27 @@
         const col = document.createElement("div");
         col.className = "col-12 mb-3";
 
-        // Preparamos el HTML para la foto de referencia
-        const imagenHtml = prod.referencia && String
+        // Conexión automática de la imagen usando el código del producto en la carpeta 'img/'
+        const codigoProd = prod.codigo || "";
+        const rutaImagen = `img/${codigoProd}.png`;
+
+        col.innerHTML = `
+          <div class="card shadow-sm p-3">
+            <div class="row g-0 align-items-center">
+              <div class="col-4 text-center">
+                <img src="${rutaImagen}" alt="Producto ${codigoProd}" class="img-fluid rounded border" style="max-height: 100px; object-fit: contain;" onerror="this.src='https://via.placeholder.com/100?text=Sin+Foto'">
+              </div>
+              <div class="col-8 ps-3">
+                <span class="badge bg-secondary mb-1">${prod.categoria || 'General'}</span>
+                <h6 class="fw-bold mb-1">Código: ${codigoProd}</h6>
+                <p class="text-muted small mb-0">${prod.descripcion || 'Sin descripción'}</p>
+              </div>
+            </div>
+          </div>
+        `;
+        container.appendChild(col);
+      });
+    }
+  </script>
+</body>
+</html>
