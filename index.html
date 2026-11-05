@@ -1,143 +1,4 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chequeo de Competencias</title>
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-
-  <div class="container my-3">
-    <!-- Selector de Competidor -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <select id="competidorSelect" class="form-select form-select-lg fw-bold text-primary">
-          <option value="Mangocenter">Competidor: Mangocenter</option>
-          <option value="Casapro">Competidor: Casapro</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Buscador -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <input type="text" id="searchInput" class="form-control form-control-lg" placeholder="Buscar por código o descripción...">
-      </div>
-    </div>
-
-    <!-- Botones de Filtro por Estado -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <div class="btn-group w-100 shadow-sm" role="group">
-          <button type="button" class="btn btn-primary active" id="btn-estado-todos" onclick="filtrarPorEstado('todos')">Todos</button>
-          <button type="button" class="btn btn-outline-warning text-dark fw-semibold" id="btn-estado-pendientes" onclick="filtrarPorEstado('pendientes')">Pendientes</button>
-          <button type="button" class="btn btn-outline-success fw-semibold" id="btn-estado-chequeados" onclick="filtrarPorEstado('chequeados')">Chequeados</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Filtros de Categoría -->
-    <div class="row mb-3">
-      <div class="col-12 d-flex flex-wrap gap-1" id="categoryContainer"></div>
-    </div>
-
-    <!-- Lista de Productos -->
-    <div class="row" id="productsContainer">
-      <div class="text-center my-5">
-        <div class="spinner-border text-primary" role="status"></div>
-        <p class="mt-2 text-muted">Cargando productos de la hoja...</p>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyUvqE_7IpalfOp5XXo2Jdh94ETQvD9B4aGOyLWnk8chf24vSL6rnMgBcv-JzasKuAF/exec";
-
-    let todosLosProductos = [];
-    let productosFiltrados = [];
-    let categoriaActual = "Todas";
-    let estadoFiltroActual = "todos";
-
-    document.addEventListener("DOMContentLoaded", () => {
-      cargarDatos();
-      document.getElementById("searchInput").addEventListener("input", aplicarFiltros);
-    });
-
-    async function cargarDatos() {
-      try {
-        const response = await fetch(APPS_SCRIPT_URL);
-        if (!response.ok) throw new Error("Error en la respuesta del servidor");
-        todosLosProductos = await response.json();
-        
-        generarBotonesCategorias();
-        aplicarFiltros();
-      } catch (error) {
-        console.error("Error al cargar:", error);
-        document.getElementById("productsContainer").innerHTML = `
-          <div class="col-12 text-center text-danger my-5">
-            <h5>Error al cargar los datos</h5>
-            <p>${error.message}</p>
-          </div>`;
-      }
-    }
-
-    function filtrarPorEstado(estado) {
-      estadoFiltroActual = estado;
-      
-      document.getElementById("btn-estado-todos").className = `btn ${estado === 'todos' ? 'btn-primary' : 'btn-outline-primary'}`;
-      document.getElementById("btn-estado-pendientes").className = `btn ${estado === 'pendientes' ? 'btn-warning text-dark fw-bold' : 'btn-outline-warning text-dark fw-semibold'}`;
-      document.getElementById("btn-estado-chequeados").className = `btn ${estado === 'chequeados' ? 'btn-success fw-bold' : 'btn-outline-success fw-semibold'}`;
-
-      aplicarFiltros();
-    }
-
-    function generarBotonesCategorias() {
-      const categorias = ["Todas", ...new Set(todosLosProductos.map(p => p.categoria || p.Categoría || p.CATEGORIA).filter(c => c))];
-      const container = document.getElementById("categoryContainer");
-      container.innerHTML = "";
-
-      categorias.forEach(cat => {
-        const btn = document.createElement("button");
-        btn.className = `btn btn-sm ${cat === categoriaActual ? 'btn-dark' : 'btn-outline-secondary'}`;
-        btn.textContent = cat;
-        btn.onclick = () => {
-          categoriaActual = cat;
-          document.querySelectorAll("#categoryContainer button").forEach(b => b.className = 'btn btn-sm btn-outline-secondary');
-          btn.className = 'btn btn-sm btn-dark';
-          aplicarFiltros();
-        };
-        container.appendChild(btn);
-      });
-    }
-
-    function aplicarFiltros() {
-      const query = document.getElementById("searchInput").value.toLowerCase().trim();
-
-      productosFiltrados = todosLosProductos.filter(prod => {
-        const catProd = prod.categoria || prod.Categoría || prod.CATEGORIA || "";
-        const codProd = prod.codigo || prod.Código || prod.CODIGO || "";
-        const descProd = prod.descripcion || prod.Descripción || prod.DESCRIPCION || "";
-
-        const coincideCat = categoriaActual === "Todas" || String(catProd) === String(categoriaActual);
-        const coincideText = String(codProd).toLowerCase().includes(query) || 
-                             String(descProd).toLowerCase().includes(query);
-        
-        let coincideEstado = true;
-        if (estadoFiltroActual === "pendientes") {
-          coincideEstado = !prod.chequeado;
-        } else if (estadoFiltroActual === "chequeados") {
-          coincideEstado = prod.chequeado;
-        }
-
-        return coincideCat && coincideText && coincideEstado;
-      });
-
-      renderizarProductos();
-    }
-
-    function renderizarProductos() {
+function renderizarProductos() {
       const container = document.getElementById("productsContainer");
       container.innerHTML = "";
 
@@ -150,8 +11,16 @@
         const col = document.createElement("div");
         col.className = "col-12 mb-3";
 
-        const codigoProd = prod.codigo || prod.Código || prod.CODIGO || "";
-        const descProd = prod.descripcion || prod.Descripción || prod.DESCRIPCION || "Sin descripción";
+        // Búsqueda inteligente y universal del código y descripción en el objeto
+        const keys = Object.keys(prod);
+        let codigoProd = prod.codigo || prod.Código || prod.CODIGO || prod.Cod || prod.cod || "";
+        if (!codigoProd && keys.length > 1) {
+          // Si no lo encuentra por nombre, toma el valor de la segunda columna (índice 1, que es la columna B)
+          codigoProd = prod[keys[1]] || prod[keys[0]] || "";
+        }
+        codigoProd = String(codigoProd).trim();
+
+        const descProd = prod.descripcion || prod.Descripción || prod.DESCRIPCION || prod.Desc || "Sin descripción";
         const catProd = prod.categoria || prod.Categoría || prod.CATEGORIA || "General";
         
         // Ruta de la imagen alojada en la carpeta img/ de tu repositorio
@@ -186,6 +55,3 @@
         container.appendChild(col);
       });
     }
-  </script>
-</body>
-</html>
