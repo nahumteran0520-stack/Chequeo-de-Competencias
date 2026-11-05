@@ -95,7 +95,7 @@
     }
 
     function generarBotonesCategorias() {
-      const categorias = ["Todas", ...new Set(todosLosProductos.map(p => p.categoria).filter(c => c))];
+      const categorias = ["Todas", ...new Set(todosLosProductos.map(p => p.categoria || p.Categoría || p.CATEGORIA).filter(c => c))];
       const container = document.getElementById("categoryContainer");
       container.innerHTML = "";
 
@@ -117,9 +117,13 @@
       const query = document.getElementById("searchInput").value.toLowerCase().trim();
 
       productosFiltrados = todosLosProductos.filter(prod => {
-        const coincideCat = categoriaActual === "Todas" || String(prod.categoria) === String(categoriaActual);
-        const coincideText = String(prod.codigo || "").toLowerCase().includes(query) || 
-                             String(prod.descripcion || "").toLowerCase().includes(query);
+        const catProd = prod.categoria || prod.Categoría || prod.CATEGORIA || "";
+        const codProd = prod.codigo || prod.Código || prod.CODIGO || "";
+        const descProd = prod.descripcion || prod.Descripción || prod.DESCRIPCION || "";
+
+        const coincideCat = categoriaActual === "Todas" || String(catProd) === String(categoriaActual);
+        const coincideText = String(codProd).toLowerCase().includes(query) || 
+                             String(descProd).toLowerCase().includes(query);
         
         // Filtro por estado (todos, pendientes, chequeados)
         let coincideEstado = true;
@@ -148,8 +152,11 @@
         const col = document.createElement("div");
         col.className = "col-12 mb-3";
 
-        // Conexión automática de la imagen usando el código del producto en la carpeta 'img/'
-        const codigoProd = prod.codigo || "";
+        // Detección segura de propiedades del objeto JSON
+        const codigoProd = prod.codigo || prod.Código || prod.CODIGO || "";
+        const descProd = prod.descripcion || prod.Descripción || prod.DESCRIPCION || "Sin descripción";
+        const catProd = prod.categoria || prod.Categoría || prod.CATEGORIA || "General";
+        
         const rutaImagen = `img/${codigoProd}.png`;
 
         col.innerHTML = `
@@ -159,9 +166,9 @@
                 <img src="${rutaImagen}" alt="Producto ${codigoProd}" class="img-fluid rounded border" style="max-height: 100px; object-fit: contain;" onerror="this.src='https://via.placeholder.com/100?text=Sin+Foto'">
               </div>
               <div class="col-8 ps-3">
-                <span class="badge bg-secondary mb-1">${prod.categoria || 'General'}</span>
+                <span class="badge bg-secondary mb-1">${catProd}</span>
                 <h6 class="fw-bold mb-1">Código: ${codigoProd}</h6>
-                <p class="text-muted small mb-0">${prod.descripcion || 'Sin descripción'}</p>
+                <p class="text-muted small mb-0">${descProd}</p>
               </div>
             </div>
           </div>
