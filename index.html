@@ -27,7 +27,7 @@
       </div>
     </div>
 
-    <!-- Botones de Filtro por Estado (Pendientes / Chequeados) -->
+    <!-- Botones de Filtro por Estado -->
     <div class="row mb-3">
       <div class="col-12">
         <div class="btn-group w-100 shadow-sm" role="group">
@@ -58,7 +58,7 @@
     let todosLosProductos = [];
     let productosFiltrados = [];
     let categoriaActual = "Todas";
-    let estadoFiltroActual = "todos"; // 'todos', 'pendientes', 'chequeados'
+    let estadoFiltroActual = "todos";
 
     document.addEventListener("DOMContentLoaded", () => {
       cargarDatos();
@@ -86,7 +86,6 @@
     function filtrarPorEstado(estado) {
       estadoFiltroActual = estado;
       
-      // Actualizar estilos visuales de los botones de estado
       document.getElementById("btn-estado-todos").className = `btn ${estado === 'todos' ? 'btn-primary' : 'btn-outline-primary'}`;
       document.getElementById("btn-estado-pendientes").className = `btn ${estado === 'pendientes' ? 'btn-warning text-dark fw-bold' : 'btn-outline-warning text-dark fw-semibold'}`;
       document.getElementById("btn-estado-chequeados").className = `btn ${estado === 'chequeados' ? 'btn-success fw-bold' : 'btn-outline-success fw-semibold'}`;
@@ -125,7 +124,6 @@
         const coincideText = String(codProd).toLowerCase().includes(query) || 
                              String(descProd).toLowerCase().includes(query);
         
-        // Filtro por estado (todos, pendientes, chequeados)
         let coincideEstado = true;
         if (estadoFiltroActual === "pendientes") {
           coincideEstado = !prod.chequeado;
@@ -152,23 +150,35 @@
         const col = document.createElement("div");
         col.className = "col-12 mb-3";
 
-        // Detección segura de propiedades del objeto JSON
         const codigoProd = prod.codigo || prod.Código || prod.CODIGO || "";
         const descProd = prod.descripcion || prod.Descripción || prod.DESCRIPCION || "Sin descripción";
         const catProd = prod.categoria || prod.Categoría || prod.CATEGORIA || "General";
         
+        // Ruta de la imagen alojada en la carpeta img/ de tu repositorio
         const rutaImagen = `img/${codigoProd}.png`;
+        const estadoClase = prod.chequeado ? "border-success bg-white" : "border-warning bg-white";
 
         col.innerHTML = `
-          <div class="card shadow-sm p-3">
+          <div class="card shadow-sm p-3 border-2 ${estadoClase}">
             <div class="row g-0 align-items-center">
-              <div class="col-4 text-center">
-                <img src="${rutaImagen}" alt="Producto ${codigoProd}" class="img-fluid rounded border" style="max-height: 100px; object-fit: contain;" onerror="this.src='https://via.placeholder.com/100?text=Sin+Foto'">
+              <!-- Columna de la Imagen -->
+              <div class="col-3 text-center">
+                <img src="${rutaImagen}" alt="Prod ${codigoProd}" class="img-fluid rounded border shadow-sm" style="max-height: 90px; object-fit: contain;" onerror="this.src='https://via.placeholder.com/80?text=Sin+Foto'">
               </div>
-              <div class="col-8 ps-3">
-                <span class="badge bg-secondary mb-1">${catProd}</span>
-                <h6 class="fw-bold mb-1">Código: ${codigoProd}</h6>
-                <p class="text-muted small mb-0">${descProd}</p>
+              <!-- Columna de Información y Controles originales -->
+              <div class="col-9 ps-3">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <span class="badge bg-secondary mb-1">${catProd}</span>
+                    <h6 class="fw-bold mb-1">Cód: ${codigoProd}</h6>
+                    <p class="text-muted small mb-2">${descProd}</p>
+                  </div>
+                  <div>
+                    <span class="badge ${prod.chequeado ? 'bg-success' : 'bg-warning text-dark'}">
+                      ${prod.chequeado ? 'Chequeado' : 'Pendiente'}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
