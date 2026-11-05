@@ -94,7 +94,7 @@
     }
 
     function generarBotonesCategorias() {
-      const categorias = ["Todas", ...new Set(todosLosProductos.map(p => p.categoria || p.Categoría || p.CATEGORIA).filter(c => c))];
+      const categorias = ["Todas", ...new Set(todosLosProductos.map(p => p.categoria).filter(c => c))];
       const container = document.getElementById("categoryContainer");
       container.innerHTML = "";
 
@@ -116,9 +116,9 @@
       const query = document.getElementById("searchInput").value.toLowerCase().trim();
 
       productosFiltrados = todosLosProductos.filter(prod => {
-        const catProd = prod.categoria || prod.Categoría || prod.CATEGORIA || "";
-        const codProd = prod.codigo || prod.Código || prod.CODIGO || "";
-        const descProd = prod.descripcion || prod.Descripción || prod.DESCRIPCION || "";
+        const catProd = prod.categoria || "";
+        const codProd = prod.codigo || "";
+        const descProd = prod.descripcion || "";
 
         const coincideCat = categoriaActual === "Todas" || String(catProd) === String(categoriaActual);
         const coincideText = String(codProd).toLowerCase().includes(query) || 
@@ -137,7 +137,7 @@
       renderizarProductos();
     }
 
-   function renderizarProductos() {
+    function renderizarProductos() {
       const container = document.getElementById("productsContainer");
       container.innerHTML = "";
 
@@ -146,32 +146,13 @@
         return;
       }
 
-      productosFiltrados.forEach((prod, index) => {
+      productosFiltrados.forEach(prod => {
         const col = document.createElement("div");
         col.className = "col-12 mb-3";
 
-        // Obtener todas las propiedades y valores del objeto
-        const keys = Object.keys(prod);
-        const valores = Object.values(prod);
-
-        // Extraer el código de forma segura (buscando en las keys comunes o usando la posición de la columna B)
-        let codigoProd = prod.codigo || prod.Código || prod.CODIGO || prod.Cod || prod.cod || "";
-        if (!codigoProd || codigoProd === "undefined") {
-          // Si no hay propiedad de código directa, usamos el segundo valor del objeto (Columna B)
-          codigoProd = valores[1] !== undefined ? valores[1] : (valores[0] !== undefined ? valores[0] : "");
-        }
-        codigoProd = String(codigoProd).trim();
-
-        // Extraer descripción y categoría de forma similar
-        let descProd = prod.descripcion || prod.Descripción || prod.DESCRIPCION || prod.Desc || "";
-        if (!descProd) {
-          descProd = valores[2] !== undefined ? valores[2] : "Sin descripción";
-        }
-
-        let catProd = prod.categoria || prod.Categoría || prod.CATEGORIA || "";
-        if (!catProd) {
-          catProd = "General";
-        }
+        const codigoProd = String(prod.codigo || "").trim();
+        const descProd = prod.descripcion || "Sin descripción";
+        const catProd = prod.categoria || "General";
         
         const rutaImagen = `img/${codigoProd}.png`;
         const estadoClase = prod.chequeado ? "border-success bg-white" : "border-warning bg-white";
