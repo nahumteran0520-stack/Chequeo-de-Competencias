@@ -161,12 +161,12 @@
         col.innerHTML = `
           <div class="card shadow-sm p-3 border-2 ${estadoClase}">
             <div class="row g-0 align-items-center">
-              <!-- Columna de la Imagen -->
+              <!-- Imagen del Producto -->
               <div class="col-3 text-center p-2">
                 <img src="https://raw.githubusercontent.com/nahumteran0520-stack/Chequeo-de-Competencias/main/img./${codigoProd}.png" alt="Prod ${codigoProd}" class="img-fluid rounded border shadow-sm" style="max-height: 90px; object-fit: contain;" onerror="this.src='https://via.placeholder.com/80?text=Sin+Foto'">
               </div>
               
-              <!-- Columna de Información e Inputs Interactivos -->
+              <!-- Información del Producto -->
               <div class="col-9 ps-3">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                   <div>
@@ -179,7 +179,7 @@
                   </div>
                 </div>
 
-                <!-- Campos Interactivos de Registro (Precio, Marca, Forma de Pago, Guardar) -->
+                <!-- Controles Interactivos con Formato Original -->
                 <div class="row g-2 align-items-center">
                   <div class="col-md-3">
                     <input type="text" class="form-control form-control-sm" id="marca_${codigoProd}" placeholder="Marca" value="${prod.marca || ''}">
@@ -189,10 +189,8 @@
                   </div>
                   <div class="col-md-3">
                     <select class="form-select form-select-sm" id="pago_${codigoProd}">
-                      <option value="Efectivo" ${prod.formaPago === 'Efectivo' ? 'selected' : ''}>Efectivo</option>
-                      <option value="Zelle" ${prod.formaPago === 'Zelle' ? 'selected' : ''}>Zelle</option>
-                      <option value="Pago Móvil" ${prod.formaPago === 'Pago Móvil' ? 'selected' : ''}>Pago Móvil</option>
-                      <option value="Tarjeta" ${prod.formaPago === 'Tarjeta' ? 'selected' : ''}>Tarjeta</option>
+                      <option value="Dólar BCV" ${prod.formaPago === 'Dólar BCV' ? 'selected' : ''}>Dólar BCV</option>
+                      <option value="Euro BCV" ${prod.formaPago === 'Euro BCV' ? 'selected' : ''}>Euro BCV</option>
                     </select>
                   </div>
                   <div class="col-md-3">
