@@ -68,7 +68,8 @@
 
     async function cargarDatos() {
       try {
-        const response = await fetch(APPS_SCRIPT_URL);
+        const competidor = document.getElementById("competidorSelect").value;
+        const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}`);
         if (!response.ok) throw new Error("Error en la respuesta del servidor");
         todosLosProductos = await response.json();
         
@@ -182,10 +183,17 @@
 
                 <!-- Controles Interactivos -->
                 <div class="row g-2 align-items-center">
-                  <div class="col-md-3">
-                    <input type="text" class="form-control form-control-sm" id="marca_${codigoProd}" placeholder="Marca" value="${prod.marca || ''}">
+                  <div class="col-md-2">
+                    <select class="form-select form-select-sm" id="relacion_${codigoProd}">
+                      <option value="" ${!prod.relacion ? 'selected' : ''}>Relación...</option>
+                      <option value="Igual" ${prod.relacion === 'Igual' ? 'selected' : ''}>Igual</option>
+                      <option value="Diferente" ${prod.relacion === 'Diferente' ? 'selected' : ''}>Diferente</option>
+                    </select>
                   </div>
                   <div class="col-md-3">
+                    <input type="text" class="form-control form-control-sm" id="marca_${codigoProd}" placeholder="Marca chequeada" value="${prod.marca || ''}">
+                  </div>
+                  <div class="col-md-2">
                     <input type="number" step="0.01" class="form-control form-control-sm" id="precio_${codigoProd}" placeholder="Precio" value="${prod.precio || ''}">
                   </div>
                   <div class="col-md-3">
@@ -194,7 +202,7 @@
                       <option value="Euro BCV" ${prod.formaPago === 'Euro BCV' ? 'selected' : ''}>Euro BCV</option>
                     </select>
                   </div>
-                  <div class="col-md-3">
+                  <div class="col-md-2">
                     <button class="btn btn-success btn-sm w-100" id="btn_guardar_${codigoProd}" onclick="guardarChequeo('${codigoProd}')">
                       Guardar
                     </button>
@@ -210,6 +218,7 @@
     }
 
     function guardarChequeo(codigo) {
+      const relacion = document.getElementById(`relacion_${codigo}`).value;
       const marca = document.getElementById(`marca_${codigo}`).value;
       const precio = document.getElementById(`precio_${codigo}`).value;
       const formaPago = document.getElementById(`pago_${codigo}`).value;
@@ -221,6 +230,7 @@
 
       const datos = new URLSearchParams({
         codigo: codigo,
+        relacion: relacion,
         marca: marca,
         precio: precio,
         formaPago: formaPago,
@@ -234,7 +244,7 @@
       })
       .then(() => {
         alert("¡Guardado exitosamente!");
-        setTimeout(cargarDatos, 1000); // Espera 1 segundo para refrescar
+        setTimeout(cargarDatos, 1000);
       })
       .catch(err => {
         console.error("Error al guardar:", err);
