@@ -138,7 +138,8 @@
 
       renderizarProductos();
     }
-function renderizarProductos() {
+
+    function renderizarProductos() {
       const container = document.getElementById("productsContainer");
       container.innerHTML = "";
 
@@ -148,6 +149,9 @@ function renderizarProductos() {
       }
 
       productosFiltrados.forEach(prod => {
+        // Cálculo del número de índice global estático en la lista completa
+        const numeroReal = todosLosProductos.findIndex(p => p.codigo === prod.codigo) + 1;
+
         const col = document.createElement("div");
         col.className = "col-12 mb-3";
 
@@ -162,14 +166,14 @@ function renderizarProductos() {
         const textoBoton = prod.chequeado ? 'Actualizar' : 'Guardar';
         const claseBoton = prod.chequeado ? 'btn-outline-primary' : 'btn-success';
         
-        // Verificamos el valor que viene de la hoja sin errores
         const pagoSheet = String(prod.formaPago || "").trim();
 
         col.innerHTML = `
           <div class="card shadow-sm p-3 border-2 ${estadoClase}">
             <div class="row g-0 align-items-center">
-              <!-- Imagen del Producto -->
+              <!-- Imagen del Producto y Número Global -->
               <div class="col-3 text-center p-2">
+                <span class="badge bg-dark mb-1">Item #${numeroReal}</span>
                 <img src="https://raw.githubusercontent.com/nahumteran0520-stack/Chequeo-de-Competencias/main/img./${codigoProd}.png" alt="Prod ${codigoProd}" class="img-fluid rounded border shadow-sm" style="max-height: 90px; object-fit: contain;" onerror="this.src='https://via.placeholder.com/80?text=Sin+Foto'">
               </div>
               
@@ -178,7 +182,7 @@ function renderizarProductos() {
                 <div class="d-flex justify-content-between align-items-start mb-2">
                   <div>
                     <span class="badge bg-secondary mb-1">${catProd}</span>
-                    <h6 class="fw-bold mb-1">Cód: ${codigoProd}</h6>
+                    <h6 class="fw-bold mb-1">#${numeroReal} - Cód: ${codigoProd}</h6>
                     <p class="text-muted small mb-2">${descProd}</p>
                   </div>
                   <div>
@@ -222,7 +226,7 @@ function renderizarProductos() {
       });
     }
 
-   function guardarChequeo(codigo) {
+    function guardarChequeo(codigo) {
       const relacion = document.getElementById(`relacion_${codigo}`).value;
       const marca = document.getElementById(`marca_${codigo}`).value;
       const precio = document.getElementById(`precio_${codigo}`).value;
@@ -234,7 +238,6 @@ function renderizarProductos() {
       btnGuardar.disabled = true;
       btnGuardar.textContent = esActualizacion ? "Actualizando..." : "Guardando...";
 
-      // Actualizamos de forma inmediata el estado local en memoria para que la UI responda al instante
       const productoLocal = todosLosProductos.find(p => p.codigo === codigo);
       if (productoLocal) {
         productoLocal.chequeado = true;
@@ -260,7 +263,6 @@ function renderizarProductos() {
         body: datos
       })
       .then(() => {
-        // Refrescamos la vista local aplicando los filtros actuales de inmediato
         aplicarFiltros();
       })
       .catch(err => {
