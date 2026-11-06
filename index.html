@@ -138,8 +138,7 @@
 
       renderizarProductos();
     }
-
-    function renderizarProductos() {
+function renderizarProductos() {
       const container = document.getElementById("productsContainer");
       container.innerHTML = "";
 
@@ -162,7 +161,9 @@
 
         const textoBoton = prod.chequeado ? 'Actualizar' : 'Guardar';
         const claseBoton = prod.chequeado ? 'btn-outline-primary' : 'btn-success';
-        const formaPagoActual = String(prod.formaPago || "").trim();
+        
+        // Verificamos el valor que viene de la hoja sin errores
+        const pagoSheet = String(prod.formaPago || "").trim();
 
         col.innerHTML = `
           <div class="card shadow-sm p-3 border-2 ${estadoClase}">
@@ -202,8 +203,8 @@
                   </div>
                   <div class="col-md-3">
                     <select class="form-select form-select-sm" id="pago_${codigoProd}">
-                      <option value="Dolar bcv" ${formaPagoActual === 'Dolar bcv' || formaPagoActual === 'dolar bcv' ? 'selected' : ''}>Dolar bcv</option>
-                      <option value="Euro bcv" ${formaPagoActual === 'Euro bcv' || formaPagoActual === 'euro bcv' ? 'selected' : ''}>Euro bcv</option>
+                      <option value="Dolar bcv" ${pagoSheet === 'Dolar bcv' || pagoSheet === 'dolar bcv' ? 'selected' : ''}>Dolar bcv</option>
+                      <option value="Euro bcv" ${pagoSheet === 'Euro bcv' || pagoSheet === 'euro bcv' ? 'selected' : ''}>Euro bcv</option>
                     </select>
                   </div>
                   <div class="col-md-2">
