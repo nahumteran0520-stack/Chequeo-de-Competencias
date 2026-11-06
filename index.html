@@ -222,7 +222,7 @@ function renderizarProductos() {
       });
     }
 
-    function guardarChequeo(codigo) {
+   function guardarChequeo(codigo) {
       const relacion = document.getElementById(`relacion_${codigo}`).value;
       const marca = document.getElementById(`marca_${codigo}`).value;
       const precio = document.getElementById(`precio_${codigo}`).value;
@@ -233,6 +233,16 @@ function renderizarProductos() {
       const esActualizacion = btnGuardar.textContent.trim() === "Actualizar";
       btnGuardar.disabled = true;
       btnGuardar.textContent = esActualizacion ? "Actualizando..." : "Guardando...";
+
+      // Actualizamos de forma inmediata el estado local en memoria para que la UI responda al instante
+      const productoLocal = todosLosProductos.find(p => p.codigo === codigo);
+      if (productoLocal) {
+        productoLocal.chequeado = true;
+        productoLocal.relacion = relacion;
+        productoLocal.marca = marca;
+        productoLocal.precio = precio;
+        productoLocal.formaPago = formaPago;
+      }
 
       const datos = new URLSearchParams({
         codigo: codigo,
@@ -250,8 +260,8 @@ function renderizarProductos() {
         body: datos
       })
       .then(() => {
-        alert(esActualizacion ? "¡Actualizado exitosamente!" : "¡Guardado exitosamente!");
-        setTimeout(cargarDatos, 1000);
+        // Refrescamos la vista local aplicando los filtros actuales de inmediato
+        aplicarFiltros();
       })
       .catch(err => {
         console.error("Error al guardar:", err);
