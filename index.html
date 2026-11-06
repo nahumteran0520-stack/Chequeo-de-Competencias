@@ -198,11 +198,11 @@
                     <input type="number" step="0.01" class="form-control form-control-sm" id="precio_${codigoProd}" placeholder="Precio" value="${prod.precio || ''}">
                   </div>
                   <div class="col-md-3">
-                    <select class="form-select form-select-sm" id="pago_${codigoProd}">
-                      <option value="Dólar bcv" ${prod.formaPago === 'Dólar bcv' ? 'selected' : ''}>Dólar bcv</option>
-                      <option value="Euro bcv" ${prod.formaPago === 'Euro bcv' ? 'selected' : ''}>Euro bcv</option>
-                    </select>
-                  </div>
+  <select class="form-select form-select-sm" id="pago_${codigoProd}">
+    <option value="dólar bcv" ${prod.formaPago === 'dólar bcv' ? 'selected' : ''}>dólar bcv</option>
+    <option value="euro bcv" ${prod.formaPago === 'euro bcv' ? 'selected' : ''}>euro bcv</option>
+  </select>
+</div>
                   <div class="col-md-2">
                     <button class="btn btn-success btn-sm w-100" id="btn_guardar_${codigoProd}" onclick="guardarChequeo('${codigoProd}')">
                       Guardar
