@@ -16,7 +16,6 @@
         <select id="competidorSelect" class="form-select form-select-lg fw-bold text-primary">
           <option value="Mangocenter">Competidor: Mangocenter</option>
           <option value="Casapro">Competidor: Casapro</option>
-          <option value="OKA">Competidor: Casapro</option>
         </select>
       </div>
     </div>
@@ -161,6 +160,10 @@
         const estadoTexto = prod.chequeado ? 'Chequeado' : 'Pendiente';
         const estadoBadgeClase = prod.chequeado ? 'bg-success' : 'bg-warning text-dark';
 
+        const textoBoton = prod.chequeado ? 'Actualizar' : 'Guardar';
+        const claseBoton = prod.chequeado ? 'btn-outline-primary' : 'btn-success';
+        const formaPagoActual = String(prod.formaPago || "").trim();
+
         col.innerHTML = `
           <div class="card shadow-sm p-3 border-2 ${estadoClase}">
             <div class="row g-0 align-items-center">
@@ -198,15 +201,14 @@
                     <input type="number" step="0.01" class="form-control form-control-sm" id="precio_${codigoProd}" placeholder="Precio" value="${prod.precio || ''}">
                   </div>
                   <div class="col-md-3">
- <div class="col-md-3">
-  <select class="form-select form-select-sm" id="pago_${codigoProd}">
-    <option value="Dolar bcv" ${formaPagoActual === 'Dolar bcv' || formaPagoActual === 'Dolar bcv' ? 'selected' : ''}>Dolar bcv</option>
-    <option value="Euro bcv" ${formaPagoActual === 'Euro bcv' ? 'selected' : ''}>Euro bcv</option>
-  </select>
-</div>
+                    <select class="form-select form-select-sm" id="pago_${codigoProd}">
+                      <option value="Dolar bcv" ${formaPagoActual === 'Dolar bcv' || formaPagoActual === 'dolar bcv' ? 'selected' : ''}>Dolar bcv</option>
+                      <option value="Euro bcv" ${formaPagoActual === 'Euro bcv' || formaPagoActual === 'euro bcv' ? 'selected' : ''}>Euro bcv</option>
+                    </select>
+                  </div>
                   <div class="col-md-2">
-                    <button class="btn btn-success btn-sm w-100" id="btn_guardar_${codigoProd}" onclick="guardarChequeo('${codigoProd}')">
-                      Guardar
+                    <button class="btn ${claseBoton} btn-sm w-100 fw-semibold" id="btn_guardar_${codigoProd}" onclick="guardarChequeo('${codigoProd}')">
+                      ${textoBoton}
                     </button>
                   </div>
                 </div>
@@ -227,8 +229,9 @@
       const competidor = document.getElementById("competidorSelect").value;
       const btnGuardar = document.getElementById(`btn_guardar_${codigo}`);
 
+      const esActualizacion = btnGuardar.textContent.trim() === "Actualizar";
       btnGuardar.disabled = true;
-      btnGuardar.textContent = "Guardando...";
+      btnGuardar.textContent = esActualizacion ? "Actualizando..." : "Guardando...";
 
       const datos = new URLSearchParams({
         codigo: codigo,
@@ -236,6 +239,7 @@
         marca: marca,
         precio: precio,
         formaPago: formaPago,
+        pago: formaPago,
         competidor: competidor
       });
 
@@ -245,14 +249,14 @@
         body: datos
       })
       .then(() => {
-        alert("¡Guardado exitosamente!");
+        alert(esActualizacion ? "¡Actualizado exitosamente!" : "¡Guardado exitosamente!");
         setTimeout(cargarDatos, 1000);
       })
       .catch(err => {
         console.error("Error al guardar:", err);
         alert("Error al guardar los datos.");
         btnGuardar.disabled = false;
-        btnGuardar.textContent = "Guardar";
+        btnGuardar.textContent = esActualizacion ? "Actualizar" : "Guardar";
       });
     }
   </script>
