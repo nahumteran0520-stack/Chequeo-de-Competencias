@@ -79,7 +79,6 @@
       // Sincronización automática silenciosa cada 15 segundos
       setInterval(() => {
         const activo = document.activeElement;
-        // Solo sincroniza si el usuario no está escribiendo activamente en un input o select
         if (!activo || (activo.tagName !== 'INPUT' && activo.tagName !== 'SELECT')) {
           sincronizarDatosEnVivo();
         }
@@ -89,9 +88,10 @@
     async function cargarDatos() {
       try {
         const competidor = document.getElementById("competidorSelect").value;
-        const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}`, {
-          redirect: "follow"
-        });
+        // Agregamos _t=${Date.now()} para evitar que el navegador guarde en caché la respuesta vieja
+        const urlFinal = `${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}&_t=${Date.now()}`;
+        
+        const response = await fetch(urlFinal, { redirect: "follow" });
         if (!response.ok) throw new Error("Error en la respuesta del servidor");
         
         todosLosProductos = await response.json();
@@ -116,9 +116,10 @@
     async function sincronizarDatosEnVivo() {
       try {
         const competidor = document.getElementById("competidorSelect").value;
-        const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}`, {
-          redirect: "follow"
-        });
+        // Petición anti-caché también para la sincronización automática y manual
+        const urlFinal = `${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}&_t=${Date.now()}`;
+
+        const response = await fetch(urlFinal, { redirect: "follow" });
         if (!response.ok) return;
 
         const nuevosDatos = await response.json();
@@ -128,7 +129,7 @@
           aplicarFiltros();
         }
       } catch (e) {
-        // Ignorar fallos de red silenciosos en segundo plano para no interrumpir al usuario
+        console.error("Error en sincronización en vivo:", e);
       }
     }
 
@@ -325,6 +326,8 @@
       })
       .then(() => {
         aplicarFiltros();
+        btnGuardar.disabled = false;
+        btnGuardar.textContent = "Actualizar";
       })
       .catch(err => {
         console.error("Error al guardar:", err);
