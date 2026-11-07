@@ -27,13 +27,19 @@
       </div>
     </div>
 
-    <!-- Botones de Filtro por Estado -->
+    <!-- Botones de Filtro por Estado con Contadores en Vivo -->
     <div class="row mb-3">
       <div class="col-12">
         <div class="btn-group w-100 shadow-sm" role="group">
-          <button type="button" class="btn btn-primary active" id="btn-estado-todos" onclick="filtrarPorEstado('todos')">Todos</button>
-          <button type="button" class="btn btn-outline-warning text-dark fw-semibold" id="btn-estado-pendientes" onclick="filtrarPorEstado('pendientes')">Pendientes</button>
-          <button type="button" class="btn btn-outline-success fw-semibold" id="btn-estado-chequeados" onclick="filtrarPorEstado('chequeados')">Chequeados</button>
+          <button type="button" class="btn btn-primary active" id="btn-estado-todos" onclick="filtrarPorEstado('todos')">
+            Todos <span class="badge bg-light text-primary ms-1" id="count-todos">0</span>
+          </button>
+          <button type="button" class="btn btn-outline-warning text-dark fw-semibold" id="btn-estado-pendientes" onclick="filtrarPorEstado('pendientes')">
+            Pendientes <span class="badge bg-warning text-dark ms-1" id="count-pendientes">0</span>
+          </button>
+          <button type="button" class="btn btn-outline-success fw-semibold" id="btn-estado-chequeados" onclick="filtrarPorEstado('chequeados')">
+            Chequeados <span class="badge bg-success text-white ms-1" id="count-chequeados">0</span>
+          </button>
         </div>
       </div>
     </div>
@@ -74,6 +80,7 @@
         todosLosProductos = await response.json();
         
         generarBotonesCategorias();
+        actualizarContadores();
         aplicarFiltros();
       } catch (error) {
         console.error("Error al cargar:", error);
@@ -83,6 +90,16 @@
             <p>${error.message}</p>
           </div>`;
       }
+    }
+
+    function actualizarContadores() {
+      const total = todosLosProductos.length;
+      const chequeados = todosLosProductos.filter(p => p.chequeado).length;
+      const pendientes = total - chequeados;
+
+      document.getElementById("count-todos").textContent = total;
+      document.getElementById("count-pendientes").textContent = pendientes;
+      document.getElementById("count-chequeados").textContent = chequeados;
     }
 
     function filtrarPorEstado(estado) {
@@ -149,7 +166,6 @@
       }
 
       productosFiltrados.forEach(prod => {
-        // Cálculo del número de índice global estático en la lista completa
         const numeroReal = todosLosProductos.findIndex(p => p.codigo === prod.codigo) + 1;
 
         const col = document.createElement("div");
@@ -171,13 +187,11 @@
         col.innerHTML = `
           <div class="card shadow-sm p-3 border-2 ${estadoClase}">
             <div class="row g-0 align-items-center">
-              <!-- Imagen del Producto y Número Global -->
               <div class="col-3 text-center p-2">
                 <span class="badge bg-dark mb-1">Item #${numeroReal}</span>
                 <img src="https://raw.githubusercontent.com/nahumteran0520-stack/Chequeo-de-Competencias/main/img./${codigoProd}.png" alt="Prod ${codigoProd}" class="img-fluid rounded border shadow-sm" style="max-height: 90px; object-fit: contain;" onerror="this.src='https://via.placeholder.com/80?text=Sin+Foto'">
               </div>
               
-              <!-- Información del Producto -->
               <div class="col-9 ps-3">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                   <div>
@@ -190,7 +204,6 @@
                   </div>
                 </div>
 
-                <!-- Controles Interactivos -->
                 <div class="row g-2 align-items-center">
                   <div class="col-md-2">
                     <select class="form-select form-select-sm" id="relacion_${codigoProd}">
@@ -238,7 +251,6 @@
       btnGuardar.disabled = true;
       btnGuardar.textContent = esActualizacion ? "Actualizando..." : "Guardando...";
 
-      // Actualizamos el estado local considerando si tiene precio o si la marca es "No aplica"
       const productoLocal = todosLosProductos.find(p => p.codigo === codigo);
       if (productoLocal) {
         productoLocal.chequeado = (precio !== "" || marca.trim().toLowerCase() === "no aplica");
@@ -247,6 +259,9 @@
         productoLocal.precio = precio;
         productoLocal.formaPago = formaPago;
       }
+
+      // Actualizamos los contadores inmediatamente en pantalla
+      actualizarContadores();
 
       const datos = new URLSearchParams({
         codigo: codigo,
