@@ -78,13 +78,10 @@
     async function cargarDatos() {
       try {
         const competidor = document.getElementById("competidorSelect").value;
-        const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}`, {
-          redirect: "follow"
-        });
+        const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}`);
         if (!response.ok) throw new Error("Error en la respuesta del servidor");
         
-        const textoRespuesta = await response.text();
-        todosLosProductos = JSON.parse(textoRespuesta);
+        todosLosProductos = await response.json();
         
         if (!Array.isArray(todosLosProductos)) {
           throw new Error("El formato recibido no es una lista válida.");
@@ -106,13 +103,10 @@
     async function actualizarEnSegundoPlano() {
       try {
         const competidor = document.getElementById("competidorSelect").value;
-        const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}`, {
-          redirect: "follow"
-        });
+        const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}`);
         if (!response.ok) return;
         
-        const textoRespuesta = await response.text();
-        const datosNuevos = JSON.parse(textoRespuesta);
+        const datosNuevos = await response.json();
         
         if (Array.isArray(datosNuevos) && datosNuevos.length > 0) {
           todosLosProductos = datosNuevos;
