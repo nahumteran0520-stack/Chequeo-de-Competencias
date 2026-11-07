@@ -59,7 +59,7 @@
   </div>
 
   <script>
-    const APPS_SCRIPT_URL = https://script.google.com/macros/s/AKfycbyUvqE_7IpalfOp5XXo2Jdh94ETQvD9B4aGOyLWnk8chf24vSL6rnMgBcv-JzasKuAF/exec;
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyUvqE_7IpalfOp5XXo2Jdh94ETQvD9B4aGOyLWnk8chf24vSL6rnMgBcv-JzasKuAF/exec";
 
     let todosLosProductos = [];
     let productosFiltrados = [];
@@ -78,9 +78,17 @@
     async function cargarDatos() {
       try {
         const competidor = document.getElementById("competidorSelect").value;
-        const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}`);
+        const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}`, {
+          redirect: "follow"
+        });
         if (!response.ok) throw new Error("Error en la respuesta del servidor");
-        todosLosProductos = await response.json();
+        
+        const textoRespuesta = await response.text();
+        todosLosProductos = JSON.parse(textoRespuesta);
+        
+        if (!Array.isArray(todosLosProductos)) {
+          throw new Error("El formato recibido no es una lista válida.");
+        }
         
         generarBotonesCategorias();
         actualizarContadores();
@@ -98,8 +106,40 @@
     async function actualizarEnSegundoPlano() {
       try {
         const competidor = document.getElementById("competidorSelect").value;
-        const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}`); if (!response.ok) return;  const datosNuevos = await response.json(); if (Array.isArray(datosNuevos) && datosNuevos.length > 0) { todosLosProductos = datosNuevos; actualizarContadores(); aplicarFiltros(); } } catch (error) { console.log("Sincronización omitida por conexión momentánea."); } }  function actualizarContadores() { const total = todosLosProductos.length; const chequeados = todosLosProductos.filter(p => p.chequeado).length; const pendientes = total - chequeados;  document.getElementById("count-todos").textContent = total; document.getElementById("count-pendientes").textContent = pendientes; document.getElementById("count-chequeados").textContent = chequeados; }  function filtrarPorEstado(estado) { estadoFiltroActual = estado;  document.getElementById("btn-estado-todos").className = `btn ${estado === 'todos' ? 'btn-primary' : 'btn-outline-primary'}`;
-      document.getElementById("btn-estado-pendientes").className = `btn ${estado === 'pendientes' ? 'btn-warning text-dark fw-bold' : 'btn-outline-warning text-dark fw-semibold'}`; document.getElementById("btn-estado-chequeados").className = `btn ${estado === 'chequeados' ? 'btn-success fw-bold' : 'btn-outline-success fw-semibold'}`;
+        const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}`, {
+          redirect: "follow"
+        });
+        if (!response.ok) return;
+        
+        const textoRespuesta = await response.text();
+        const datosNuevos = JSON.parse(textoRespuesta);
+        
+        if (Array.isArray(datosNuevos) && datosNuevos.length > 0) {
+          todosLosProductos = datosNuevos;
+          actualizarContadores();
+          aplicarFiltros();
+        }
+      } catch (error) {
+        console.log("Sincronización omitida por conexión momentánea.");
+      }
+    }
+
+    function actualizarContadores() {
+      const total = todosLosProductos.length;
+      const chequeados = todosLosProductos.filter(p => p.chequeado).length;
+      const pendientes = total - chequeados;
+
+      document.getElementById("count-todos").textContent = total;
+      document.getElementById("count-pendientes").textContent = pendientes;
+      document.getElementById("count-chequeados").textContent = chequeados;
+    }
+
+    function filtrarPorEstado(estado) {
+      estadoFiltroActual = estado;
+      
+      document.getElementById("btn-estado-todos").className = `btn ${estado === 'todos' ? 'btn-primary' : 'btn-outline-primary'}`;
+      document.getElementById("btn-estado-pendientes").className = `btn ${estado === 'pendientes' ? 'btn-warning text-dark fw-bold' : 'btn-outline-warning text-dark fw-semibold'}`;
+      document.getElementById("btn-estado-chequeados").className = `btn ${estado === 'chequeados' ? 'btn-success fw-bold' : 'btn-outline-success fw-semibold'}`;
 
       aplicarFiltros();
     }
@@ -151,7 +191,6 @@
     function renderizarProductos() {
       const container = document.getElementById("productsContainer");
       
-      // Evitamos refrescar la pantalla si el usuario está interactuando con un campo de texto
       const elementoActivo = document.activeElement;
       if (elementoActivo && (elementoActivo.tagName === 'INPUT' || elementoActivo.tagName === 'SELECT') && elementoActivo.id !== 'searchInput') {
         return; 
@@ -224,4 +263,68 @@
                     </select>
                   </div>
                   <div class="col-md-2">
-                    <button class="btn ${claseBoton} btn-
+                    <button class="btn ${claseBoton} btn-sm w-100 fw-semibold" id="btn_guardar_${codigoProd}" onclick="guardarChequeo('${codigoProd}')">
+                      ${textoBoton}
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        `;
+        container.appendChild(col);
+      });
+    }
+
+    function guardarChequeo(codigo) {
+      const relacion = document.getElementById(`relacion_${codigo}`).value;
+      const marca = document.getElementById(`marca_${codigo}`).value;
+      const precio = document.getElementById(`precio_${codigo}`).value;
+      const formaPago = document.getElementById(`pago_${codigo}`).value;
+      const competidor = document.getElementById("competidorSelect").value;
+      const btnGuardar = document.getElementById(`btn_guardar_${codigo}`);
+
+      const esActualizacion = btnGuardar.textContent.trim() === "Actualizar";
+      btnGuardar.disabled = true;
+      btnGuardar.textContent = esActualizacion ? "Actualizando..." : "Guardando...";
+
+      const productoLocal = todosLosProductos.find(p => p.codigo === codigo);
+      if (productoLocal) {
+        productoLocal.chequeado = (precio !== "" || marca.trim().toLowerCase() === "no aplica");
+        productoLocal.relacion = relacion;
+        productoLocal.marca = marca;
+        productoLocal.precio = precio;
+        productoLocal.formaPago = formaPago;
+      }
+
+      actualizarContadores();
+
+      const datos = new URLSearchParams({
+        codigo: codigo,
+        relacion: relacion,
+        marca: marca,
+        precio: precio,
+        formaPago: formaPago,
+        pago: formaPago,
+        competidor: competidor
+      });
+
+      fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors", 
+        body: datos
+      })
+      .then(() => {
+        aplicarFiltros();
+      })
+      .catch(err => {
+        console.error("Error al guardar:", err);
+        alert("Error al guardar los datos.");
+        btnGuardar.disabled = false;
+        btnGuardar.textContent = esActualizacion ? "Actualizar" : "Guardar";
+      });
+    }
+  </script>
+</body>
+</html>
