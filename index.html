@@ -238,9 +238,10 @@
       btnGuardar.disabled = true;
       btnGuardar.textContent = esActualizacion ? "Actualizando..." : "Guardando...";
 
+      // Actualizamos el estado local considerando si tiene precio o si la marca es "No aplica"
       const productoLocal = todosLosProductos.find(p => p.codigo === codigo);
       if (productoLocal) {
-        productoLocal.chequeado = true;
+        productoLocal.chequeado = (precio !== "" || marca.trim().toLowerCase() === "no aplica");
         productoLocal.relacion = relacion;
         productoLocal.marca = marca;
         productoLocal.precio = precio;
