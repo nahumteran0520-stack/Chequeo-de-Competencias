@@ -71,17 +71,20 @@
       document.getElementById("searchInput").addEventListener("input", aplicarFiltros);
       document.getElementById("competidorSelect").addEventListener("change", cargarDatos);
 
-      // Sincronización automática silenciosa cada 15 segundos en segundo plano
-      setInterval(actualizarEnSegundoPlano, 15000);
+      // Sincronización en segundo plano silenciosa (no recarga la pantalla, solo actualiza valores)
+      setInterval(sincronizarSilencioso, 12000);
     });
 
     async function cargarDatos() {
       try {
         const competidor = document.getElementById("competidorSelect").value;
-        const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}`);
+        const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}`, {
+          redirect: "follow"
+        });
         if (!response.ok) throw new Error("Error en la respuesta del servidor");
         
-        todosLosProductos = await response.json();
+        const textoRespuesta = await response.text();
+        todosLosProductos = JSON.parse(textoRespuesta);
         
         if (!Array.isArray(todosLosProductos)) {
           throw new Error("El formato recibido no es una lista válida.");
@@ -100,21 +103,30 @@
       }
     }
 
-    async function actualizarEnSegundoPlano() {
+    async function sincronizarSilencioso() {
+      // Si el usuario está escribiendo o modificando una casilla, omitimos el ciclo para no molestar su tipeo
+      const activo = document.activeElement;
+      if (activo && (activo.tagName === 'INPUT' || activo.tagName === 'SELECT')) {
+        return;
+      }
+
       try {
         const competidor = document.getElementById("competidorSelect").value;
-        const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}`);
+        const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}`, {
+          redirect: "follow"
+        });
         if (!response.ok) return;
-        
-        const datosNuevos = await response.json();
-        
-        if (Array.isArray(datosNuevos) && datosNuevos.length > 0) {
-          todosLosProductos = datosNuevos;
+
+        const textoRespuesta = await response.text();
+        const nuevosDatos = JSON.parse(textoRespuesta);
+
+        if (Array.isArray(nuevosDatos) && nuevosDatos.length > 0) {
+          todosLosProductos = nuevosDatos;
           actualizarContadores();
           aplicarFiltros();
         }
-      } catch (error) {
-        console.log("Sincronización omitida por conexión momentánea.");
+      } catch (e) {
+        // Ignorar fallos de micro-conexión en segundo plano
       }
     }
 
