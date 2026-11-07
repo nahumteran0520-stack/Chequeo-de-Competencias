@@ -77,12 +77,7 @@
         const competidor = document.getElementById("competidorSelect").value;
         const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}`);
         if (!response.ok) throw new Error("Error en la respuesta del servidor");
-        
         todosLosProductos = await response.json();
-        
-        if (!Array.isArray(todosLosProductos)) {
-          throw new Error("El formato recibido no es una lista válida.");
-        }
         
         generarBotonesCategorias();
         actualizarContadores();
@@ -163,12 +158,6 @@
 
     function renderizarProductos() {
       const container = document.getElementById("productsContainer");
-      
-      const elementoActivo = document.activeElement;
-      if (elementoActivo && (elementoActivo.tagName === 'INPUT' || elementoActivo.tagName === 'SELECT') && elementoActivo.id !== 'searchInput') {
-        return; 
-      }
-
       container.innerHTML = "";
 
       if (productosFiltrados.length === 0) {
@@ -271,6 +260,7 @@
         productoLocal.formaPago = formaPago;
       }
 
+      // Actualizamos los contadores inmediatamente en pantalla
       actualizarContadores();
 
       const datos = new URLSearchParams({
