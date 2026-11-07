@@ -10,18 +10,13 @@
 <body class="bg-light">
 
   <div class="container my-3">
-    <!-- Selector de Competidor y Botón de Sincronización Manual -->
-    <div class="row mb-3 align-items-center">
-      <div class="col-8">
+    <!-- Selector de Competidor -->
+    <div class="row mb-3">
+      <div class="col-12">
         <select id="competidorSelect" class="form-select form-select-lg fw-bold text-primary">
           <option value="Mangocenter">Competidor: Mangocenter</option>
           <option value="Casapro">Competidor: Casapro</option>
         </select>
-      </div>
-      <div class="col-4 text-end">
-        <button class="btn btn-outline-primary btn-sm w-100 fw-semibold" onclick="sincronizarDatosEnVivo()">
-          🔄 Actualizar
-        </button>
       </div>
     </div>
 
@@ -75,30 +70,14 @@
       cargarDatos();
       document.getElementById("searchInput").addEventListener("input", aplicarFiltros);
       document.getElementById("competidorSelect").addEventListener("change", cargarDatos);
-
-      // Sincronización automática silenciosa cada 15 segundos
-      setInterval(() => {
-        const activo = document.activeElement;
-        if (!activo || (activo.tagName !== 'INPUT' && activo.tagName !== 'SELECT')) {
-          sincronizarDatosEnVivo();
-        }
-      }, 15000);
     });
 
     async function cargarDatos() {
       try {
         const competidor = document.getElementById("competidorSelect").value;
-        // Agregamos _t=${Date.now()} para evitar que el navegador guarde en caché la respuesta vieja
-        const urlFinal = `${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}&_t=${Date.now()}`;
-        
-        const response = await fetch(urlFinal, { redirect: "follow" });
+        const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}`);
         if (!response.ok) throw new Error("Error en la respuesta del servidor");
-        
         todosLosProductos = await response.json();
-        
-        if (!Array.isArray(todosLosProductos)) {
-          throw new Error("El formato recibido no es una lista válida.");
-        }
         
         generarBotonesCategorias();
         actualizarContadores();
@@ -110,26 +89,6 @@
             <h5>Error al cargar los datos</h5>
             <p>${error.message}</p>
           </div>`;
-      }
-    }
-
-    async function sincronizarDatosEnVivo() {
-      try {
-        const competidor = document.getElementById("competidorSelect").value;
-        // Petición anti-caché también para la sincronización automática y manual
-        const urlFinal = `${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}&_t=${Date.now()}`;
-
-        const response = await fetch(urlFinal, { redirect: "follow" });
-        if (!response.ok) return;
-
-        const nuevosDatos = await response.json();
-        if (Array.isArray(nuevosDatos) && nuevosDatos.length > 0) {
-          todosLosProductos = nuevosDatos;
-          actualizarContadores();
-          aplicarFiltros();
-        }
-      } catch (e) {
-        console.error("Error en sincronización en vivo:", e);
       }
     }
 
@@ -199,12 +158,6 @@
 
     function renderizarProductos() {
       const container = document.getElementById("productsContainer");
-      
-      const elementoActivo = document.activeElement;
-      if (elementoActivo && (elementoActivo.tagName === 'INPUT' || elementoActivo.tagName === 'SELECT') && elementoActivo.id !== 'searchInput') {
-        return; 
-      }
-
       container.innerHTML = "";
 
       if (productosFiltrados.length === 0) {
@@ -307,6 +260,7 @@
         productoLocal.formaPago = formaPago;
       }
 
+      // Actualizamos los contadores inmediatamente en pantalla
       actualizarContadores();
 
       const datos = new URLSearchParams({
@@ -326,8 +280,6 @@
       })
       .then(() => {
         aplicarFiltros();
-        btnGuardar.disabled = false;
-        btnGuardar.textContent = "Actualizar";
       })
       .catch(err => {
         console.error("Error al guardar:", err);
