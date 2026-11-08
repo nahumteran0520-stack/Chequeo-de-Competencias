@@ -1,448 +1,59 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chequeo de Competencias</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0d6efd">
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-
-  <div class="container my-3">
-    <!-- Indicador de Estado de Conexión -->
-    <div id="connectionStatus" class="alert alert-warning py-1 px-3 d-none mb-2 text-center small fw-semibold" role="alert">
-      Sin conexión a internet - Modo Offline activo (los cambios se guardarán localmente).
-    </div>
-
-    <!-- Selector de Competidor y Botón de Sincronización Manual -->
-    <div class="row mb-3 align-items-center">
-      <div class="col-7">
-        <select id="competidorSelect" class="form-select form-select-lg fw-bold text-primary">
-          <option value="Mangocenter">Competidor: Mangocenter</option>
-          <option value="Casapro">Competidor: Casapro</option>
-        </select>
-      </div>
-      <div class="col-5 text-end">
-        <button class="btn btn-outline-primary btn-sm w-100 fw-semibold" onclick="sincronizarDatosEnVivo()">
-          🔄 Sincronizar <span id="pendingBadge" class="badge bg-danger d-none">0</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Buscador -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <input type="text" id="searchInput" class="form-control form-control-lg" placeholder="Buscar por código o descripción...">
-      </div>
-    </div>
-
-    <!-- Botones de Filtro por Estado con Contadores en Vivo -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <div class="btn-group w-100 shadow-sm" role="group">
-          <button type="button" class="btn btn-primary active" id="btn-estado-todos" onclick="filtrarPorEstado('todos')">
-            Todos <span class="badge bg-light text-primary ms-1" id="count-todos">0</span>
-          </button>
-          <button type="button" class="btn btn-outline-warning text-dark fw-semibold" id="btn-estado-pendientes" onclick="filtrarPorEstado('pendientes')">
-            Pendientes <span class="badge bg-warning text-dark ms-1" id="count-pendientes">0</span>
-          </button>
-          <button type="button" class="btn btn-outline-success fw-semibold" id="btn-estado-chequeados" onclick="filtrarPorEstado('chequeados')">
-            Chequeados <span class="badge bg-success text-white ms-1" id="count-chequeados">0</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Filtros de Categoría -->
-    <div class="row mb-3">
-      <div class="col-12 d-flex flex-wrap gap-1" id="categoryContainer"></div>
-    </div>
-
-    <!-- Lista de Productos -->
-    <div class="row" id="productsContainer">
-      <div class="text-center my-5">
-        <div class="spinner-border text-primary" role="status"></div>
-        <p class="mt-2 text-muted">Cargando productos de la hoja...</p>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyUvqE_7IpalfOp5XXo2Jdh94ETQvD9B4aGOyLWnk8chf24vSL6rnMgBcv-JzasKuAF/exec";
-
-    let todosLosProductos = [];
-    let productosFiltrados = [];
-    let categoriaActual = "Todas";
-    let estadoFiltroActual = "todos";
-
-    document.addEventListener("DOMContentLoaded", () => {
-      window.addEventListener('online', actualizarEstadoRed);
-      window.addEventListener('offline', actualizarEstadoRed);
-      actualizarEstadoRed();
-
-      cargarDatos();
-      document.getElementById("searchInput").addEventListener("input", aplicarFiltros);
-      document.getElementById("competidorSelect").addEventListener("change", cargarDatos);
-    });
-
-    function actualizarEstadoRed() {
-      const banner = document.getElementById("connectionStatus");
-      if (navigator.onLine) {
-        banner.classList.add("d-none");
-        subirPendientesLocales(); // Al volver online, sube lo pendiente automáticamente
-      } else {
-        banner.classList.remove("d-none");
-      }
-    }
-
-    function obtenerClaveCache() {
-      const competidor = document.getElementById("competidorSelect").value;
-      return `cache_productos_${competidor}`;
-    }
-
-    function obtenerClavePendientes() {
-      const competidor = document.getElementById("competidorSelect").value;
-      return `pendientes_subida_${competidor}`;
-    }
-
-    async function cargarDatos() {
+async function cargarDatos() {
       const competidor = document.getElementById("competidorSelect").value;
       const cacheKey = obtenerClaveCache();
 
-      // Intentar cargar desde internet
+      // 1. SIEMPRE intentamos cargar primero lo que tenemos guardado localmente en el teléfono
+      // Esto garantiza que si estás sin internet, la app abre al instante sin errores.
+      cargarDesdeCache(cacheKey);
+
+      // Si tenemos productos locales, mostramos la interfaz de una vez
+      if (todosLosProductos.length > 0) {
+        aplicarPendientesLocalesAData();
+        generarBotonesCategorias();
+        actualizarContadores();
+        aplicarFiltros();
+        actualizarBadgePendientes();
+      } else {
+        // Si es la primera vez que se abre la app y no hay caché local, mostramos estado de carga
+        document.getElementById("productsContainer").innerHTML = `
+          <div class="text-center my-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Cargando productos...</p>
+          </div>`;
+      }
+
+      // 2. Si hay internet, consultamos en segundo plano para refrescar la lista por si hubo cambios en la nube
       if (navigator.onLine) {
         try {
           const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}&_t=${Date.now()}`);
-          if (!response.ok) throw new Error("Error de red");
-          
-          todosLosProductos = await response.json();
-          if (Array.isArray(todosLosProductos)) {
-            // Guardar copia local limpia en el dispositivo
-            localStorage.setItem(cacheKey, JSON.stringify(todosLosProductos));
+          if (response.ok) {
+            const datosNuevos = await response.json();
+            if (Array.isArray(datosNuevos) && datosNuevos.length > 0) {
+              todosLosProductos = datosNuevos;
+              localStorage.setItem(cacheKey, JSON.stringify(todosLosProductos));
+              
+              // Volvemos a aplicar pendientes por si tenías cambios locales sin subir
+              aplicarPendientesLocalesAData();
+              generarBotonesCategorias();
+              actualizarContadores();
+              aplicarFiltros();
+            }
           }
         } catch (error) {
-          console.warn("Fallo lectura en vivo, intentando local cache:", error);
-          cargarDesdeCache(cacheKey);
+          console.warn("No se pudo actualizar desde la red, usando modo local:", error);
         }
-      } else {
-        // Modo offline: Leer del caché del teléfono directamente
-        cargarDesdeCache(cacheKey);
       }
-
-      // Fusionar con cambios pendientes locales que aún no se hayan subido
-      aplicarPendientesLocalesAData();
-
-      generarBotonesCategorias();
-      actualizarContadores();
-      aplicarFiltros();
-      actualizarBadgePendientes();
     }
 
     function cargarDesdeCache(cacheKey) {
       const localData = localStorage.getItem(cacheKey);
       if (localData) {
-        todosLosProductos = JSON.parse(localData);
+        try {
+          todosLosProductos = JSON.parse(localData);
+        } catch (e) {
+          todosLosProductos = [];
+        }
       } else {
         todosLosProductos = [];
       }
     }
-
-    function guardarChequeo(codigo) {
-      const relacion = document.getElementById(`relacion_${codigo}`).value;
-      const marca = document.getElementById(`marca_${codigo}`).value;
-      const precio = document.getElementById(`precio_${codigo}`).value;
-      const formaPago = document.getElementById(`pago_${codigo}`).value;
-      const competidor = document.getElementById("competidorSelect").value;
-      const btnGuardar = document.getElementById(`btn_guardar_${codigo}`);
-
-      btnGuardar.disabled = true;
-      btnGuardar.textContent = "Procesando...";
-
-      const objetoRegistro = {
-        codigo: codigo,
-        relacion: relacion,
-        marca: marca,
-        precio: precio,
-        formaPago: formaPago,
-        pago: formaPago,
-        competidor: competidor,
-        timestamp: Date.now()
-      };
-
-      // 1. Actualizar array en memoria del teléfono
-      const productoLocal = todosLosProductos.find(p => p.codigo === codigo);
-      if (productoLocal) {
-        productoLocal.chequeado = (precio !== "" || marca.trim().toLowerCase() === "no aplica");
-        productoLocal.relacion = relacion;
-        productoLocal.marca = marca;
-        productoLocal.precio = precio;
-        productoLocal.formaPago = formaPago;
-        productoLocal.pendienteSubida = true;
-      }
-
-      // 2. Guardar en memoria de caché del teléfono
-      localStorage.setItem(obtenerClaveCache(), JSON.stringify(todosLosProductos));
-
-      // 3. Agregar a la cola de pendientes por subir
-      const pendientesKey = obtenerClavePendientes();
-      let pendientes = JSON.parse(localStorage.getItem(pendientesKey) || "[]");
-      pendientes = pendientes.filter(item => item.codigo !== codigo); // Evitar duplicados
-      pendientes.push(objetoRegistro);
-      localStorage.setItem(pendientesKey, JSON.stringify(pendientes));
-
-      actualizarContadores();
-      actualizarBadgePendientes();
-      aplicarFiltros();
-
-      // 4. Si hay internet, intentar subir de una vez
-      if (navigator.onLine) {
-        subirPendientesLocales();
-      } else {
-        btnGuardar.disabled = false;
-        btnGuardar.textContent = "Guardado Local";
-      }
-    }
-
-    async function subirPendientesLocales() {
-      if (!navigator.onLine) return;
-
-      const pendientesKey = obtenerClavePendientes();
-      let pendientes = JSON.parse(localStorage.getItem(pendientesKey) || "[]");
-
-      if (pendientes.length === 0) return;
-
-      for (let i = 0; i < pendientes.length; i++) {
-        const item = pendientes[i];
-        const datos = new URLSearchParams(item);
-
-        try {
-          await fetch(APPS_SCRIPT_URL, {
-            method: "POST",
-            mode: "no-cors",
-            body: datos
-          });
-
-          // Quitar de la cola una vez enviado
-          pendientes = pendientes.filter(p => p.codigo !== item.codigo);
-          localStorage.setItem(pendientesKey, JSON.stringify(pendientes));
-
-          // Desmarcar indicador visual de pendiente local
-          const prod = todosLosProductos.find(p => p.codigo === item.codigo);
-          if (prod) prod.pendienteSubida = false;
-
-        } catch (e) {
-          console.error("Error al subir pendiente:", item.codigo, e);
-          break; // Si falla la conexión a mitad de camino, detiene el ciclo
-        }
-      }
-
-      localStorage.setItem(obtenerClaveCache(), JSON.stringify(todosLosProductos));
-      actualizarBadgePendientes();
-      aplicarFiltros();
-    }
-
-    function aplicarPendientesLocalesAData() {
-      const pendientesKey = obtenerClavePendientes();
-      const pendientes = JSON.parse(localStorage.getItem(pendientesKey) || "[]");
-
-      pendientes.forEach(item => {
-        const prod = todosLosProductos.find(p => p.codigo === item.codigo);
-        if (prod) {
-          prod.chequeado = (item.precio !== "" || item.marca.trim().toLowerCase() === "no aplica");
-          prod.relacion = item.relacion;
-          prod.marca = item.marca;
-          prod.precio = item.precio;
-          prod.formaPago = item.formaPago;
-          prod.pendienteSubida = true;
-        }
-      });
-    }
-
-    function sincronizarDatosEnVivo() {
-      if (navigator.onLine) {
-        subirPendientesLocales().then(() => cargarDatos());
-      } else {
-        alert("Estás sin conexión a internet. Los datos locales ya están cargados.");
-      }
-    }
-
-    function actualizarBadgePendientes() {
-      const pendientesKey = obtenerClavePendientes();
-      const pendientes = JSON.parse(localStorage.getItem(pendientesKey) || "[]");
-      const badge = document.getElementById("pendingBadge");
-      
-      if (pendientes.length > 0) {
-        badge.textContent = pendientes.length;
-        badge.classList.remove("d-none");
-      } else {
-        badge.classList.add("d-none");
-      }
-    }
-
-    function actualizarContadores() {
-      const total = todosLosProductos.length;
-      const chequeados = todosLosProductos.filter(p => p.chequeado).length;
-      const pendientes = total - chequeados;
-
-      document.getElementById("count-todos").textContent = total;
-      document.getElementById("count-pendientes").textContent = pendientes;
-      document.getElementById("count-chequeados").textContent = chequeados;
-    }
-
-    function filtrarPorEstado(estado) {
-      estadoFiltroActual = estado;
-      
-      document.getElementById("btn-estado-todos").className = `btn ${estado === 'todos' ? 'btn-primary' : 'btn-outline-primary'}`;
-      document.getElementById("btn-estado-pendientes").className = `btn ${estado === 'pendientes' ? 'btn-warning text-dark fw-bold' : 'btn-outline-warning text-dark fw-semibold'}`;
-      document.getElementById("btn-estado-chequeados").className = `btn ${estado === 'chequeados' ? 'btn-success fw-bold' : 'btn-outline-success fw-semibold'}`;
-
-      aplicarFiltros();
-    }
-
-    function generarBotonesCategorias() {
-      const categorias = ["Todas", ...new Set(todosLosProductos.map(p => p.categoria).filter(c => c))];
-      const container = document.getElementById("categoryContainer");
-      container.innerHTML = "";
-
-      categorias.forEach(cat => {
-        const btn = document.createElement("button");
-        btn.className = `btn btn-sm ${cat === categoriaActual ? 'btn-dark' : 'btn-outline-secondary'}`;
-        btn.textContent = cat;
-        btn.onclick = () => {
-          categoriaActual = cat;
-          document.querySelectorAll("#categoryContainer button").forEach(b => b.className = 'btn btn-sm btn-outline-secondary');
-          btn.className = 'btn btn-sm btn-dark';
-          aplicarFiltros();
-        };
-        container.appendChild(btn);
-      });
-    }
-
-    function aplicarFiltros() {
-      const query = document.getElementById("searchInput").value.toLowerCase().trim();
-
-      productosFiltrados = todosLosProductos.filter(prod => {
-        const catProd = prod.categoria || "";
-        const codProd = prod.codigo || "";
-        const descProd = prod.descripcion || "";
-
-        const coincideCat = categoriaActual === "Todas" || String(catProd) === String(categoriaActual);
-        const coincideText = String(codProd).toLowerCase().includes(query) || 
-                             String(descProd).toLowerCase().includes(query);
-        
-        let coincideEstado = true;
-        if (estadoFiltroActual === "pendientes") {
-          coincideEstado = !prod.chequeado;
-        } else if (estadoFiltroActual === "chequeados") {
-          coincideEstado = prod.chequeado;
-        }
-
-        return coincideCat && coincideText && coincideEstado;
-      });
-
-      renderizarProductos();
-    }
-
-    function renderizarProductos() {
-      const container = document.getElementById("productsContainer");
-      
-      const elementoActivo = document.activeElement;
-      if (elementoActivo && (elementoActivo.tagName === 'INPUT' || elementoActivo.tagName === 'SELECT') && elementoActivo.id !== 'searchInput') {
-        return; 
-      }
-
-      container.innerHTML = "";
-
-      if (productosFiltrados.length === 0) {
-        container.innerHTML = `<div class="col-12 text-center text-muted my-4">No se encontraron artículos con los filtros seleccionados.</div>`;
-        return;
-      }
-
-      productosFiltrados.forEach(prod => {
-        const numeroReal = todosLosProductos.findIndex(p => p.codigo === prod.codigo) + 1;
-
-        const col = document.createElement("div");
-        col.className = "col-12 mb-3";
-
-        const codigoProd = String(prod.codigo || "").trim();
-        const descProd = prod.descripcion || "Sin descripción";
-        const catProd = prod.categoria || "General";
-        
-        const estadoClase = prod.chequeado ? "border-success bg-white" : "border-warning bg-white";
-        const estadoTexto = prod.chequeado ? 'Chequeado' : 'Pendiente';
-        const estadoBadgeClase = prod.chequeado ? 'bg-success' : 'bg-warning text-dark';
-
-        const textoBoton = prod.chequeado ? 'Actualizar' : 'Guardar';
-        const claseBoton = prod.chequeado ? 'btn-outline-primary' : 'btn-success';
-        
-        const pagoSheet = String(prod.formaPago || "").trim();
-        const avisoPendiente = prod.pendienteSubida ? `<span class="badge bg-danger ms-1">Offline</span>` : '';
-
-        col.innerHTML = `
-          <div class="card shadow-sm p-3 border-2 ${estadoClase}">
-            <div class="row g-0 align-items-center">
-              <div class="col-3 text-center p-2">
-                <span class="badge bg-dark mb-1">Item #${numeroReal}</span>
-                <img src="https://raw.githubusercontent.com/nahumteran0520-stack/Chequeo-de-Competencias/main/img./${codigoProd}.png" alt="Prod ${codigoProd}" class="img-fluid rounded border shadow-sm" style="max-height: 90px; object-fit: contain;" onerror="this.src='https://via.placeholder.com/80?text=Sin+Foto'">
-              </div>
-              
-              <div class="col-9 ps-3">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                  <div>
-                    <span class="badge bg-secondary mb-1">${catProd}</span>
-                    <h6 class="fw-bold mb-1">#${numeroReal} - Cód: ${codigoProd}</h6>
-                    <p class="text-muted small mb-2">${descProd}</p>
-                  </div>
-                  <div>
-                    <span class="badge ${estadoBadgeClase}">${estadoTexto}</span>
-                    ${avisoPendiente}
-                  </div>
-                </div>
-
-                <div class="row g-2 align-items-center">
-                  <div class="col-md-2">
-                    <select class="form-select form-select-sm" id="relacion_${codigoProd}">
-                      <option value="" ${!prod.relacion ? 'selected' : ''}>Relación...</option>
-                      <option value="Igual" ${prod.relacion === 'Igual' ? 'selected' : ''}>Igual</option>
-                      <option value="Similar" ${prod.relacion === 'Similar' ? 'selected' : ''}>Similar</option>
-                    </select>
-                  </div>
-                  <div class="col-md-3">
-                    <input type="text" class="form-control form-control-sm" id="marca_${codigoProd}" placeholder="Marca chequeada" value="${prod.marca || ''}">
-                  </div>
-                  <div class="col-md-2">
-                    <input type="number" step="0.01" class="form-control form-control-sm" id="precio_${codigoProd}" placeholder="Precio" value="${prod.precio || ''}">
-                  </div>
-                  <div class="col-md-3">
-                    <select class="form-select form-select-sm" id="pago_${codigoProd}">
-                      <option value="Dolar bcv" ${pagoSheet === 'Dolar bcv' || pagoSheet === 'dolar bcv' ? 'selected' : ''}>Dolar bcv</option>
-                      <option value="Euro bcv" ${pagoSheet === 'Euro bcv' || pagoSheet === 'euro bcv' ? 'selected' : ''}>Euro bcv</option>
-                    </select>
-                  </div>
-                  <div class="col-md-2">
-                    <button class="btn ${claseBoton} btn-sm w-100 fw-semibold" id="btn_guardar_${codigoProd}" onclick="guardarChequeo('${codigoProd}')">
-                      ${textoBoton}
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          </div>
-        `;
-        container.appendChild(col);
-      });
-    }
-
-    // REGISTRO DEL SERVICE WORKER
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js')
-        .then(() => console.log("Service Worker registrado con éxito"))
-        .catch(err => console.error("Error al registrar Service Worker:", err));
-    }
-  </script>
-</body>
-</html>
