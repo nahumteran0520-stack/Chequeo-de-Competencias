@@ -65,7 +65,7 @@
     <div class="row" id="productsContainer">
       <div class="text-center my-5">
         <div class="spinner-border text-primary" role="status"></div>
-        <p class="mt-2 text-muted">Cargando productos de la hoja...</p>
+        <p class="mt-2 text-muted">Cargando productos...</p>
       </div>
     </div>
   </div>
@@ -92,7 +92,7 @@
       const banner = document.getElementById("connectionStatus");
       if (navigator.onLine) {
         banner.classList.add("d-none");
-        subirPendientesLocales(); // Al volver online, sube lo pendiente automáticamente
+        subirPendientesLocales();
       } else {
         banner.classList.remove("d-none");
       }
@@ -112,11 +112,9 @@
       const competidor = document.getElementById("competidorSelect").value;
       const cacheKey = obtenerClaveCache();
 
-      // 1. SIEMPRE intentamos cargar primero lo que tenemos guardado localmente en el teléfono
-      // Esto garantiza que si estás sin internet, la app abre al instante sin errores.
+      // 1. Cargar memoria local primero (garantiza apertura instantánea sin internet)
       cargarDesdeCache(cacheKey);
 
-      // Si tenemos productos locales, mostramos la interfaz de una vez
       if (todosLosProductos.length > 0) {
         aplicarPendientesLocalesAData();
         generarBotonesCategorias();
@@ -124,7 +122,6 @@
         aplicarFiltros();
         actualizarBadgePendientes();
       } else {
-        // Si es la primera vez que se abre la app y no hay caché local, mostramos estado de carga
         document.getElementById("productsContainer").innerHTML = `
           <div class="text-center my-5">
             <div class="spinner-border text-primary" role="status"></div>
@@ -132,7 +129,7 @@
           </div>`;
       }
 
-      // 2. Si hay internet, consultamos en segundo plano para refrescar la lista por si hubo cambios en la nube
+      // 2. Si hay internet, refresca desde Sheets en segundo plano
       if (navigator.onLine) {
         try {
           const response = await fetch(`${APPS_SCRIPT_URL}?competidor=${encodeURIComponent(competidor)}&_t=${Date.now()}`);
@@ -142,7 +139,6 @@
               todosLosProductos = datosNuevos;
               localStorage.setItem(cacheKey, JSON.stringify(todosLosProductos));
               
-              // Volvemos a aplicar pendientes por si tenías cambios locales sin subir
               aplicarPendientesLocalesAData();
               generarBotonesCategorias();
               actualizarContadores();
@@ -150,7 +146,7 @@
             }
           }
         } catch (error) {
-          console.warn("No se pudo actualizar desde la red, usando modo local:", error);
+          console.warn("Uso de datos locales por falta de conexión:", error);
         }
       }
     }
@@ -190,7 +186,7 @@
         timestamp: Date.now()
       };
 
-      // 1. Actualizar array en memoria del teléfono
+      // 1. Actualizar memoria del teléfono
       const productoLocal = todosLosProductos.find(p => p.codigo === codigo);
       if (productoLocal) {
         productoLocal.chequeado = (precio !== "" || marca.trim().toLowerCase() === "no aplica");
@@ -201,13 +197,13 @@
         productoLocal.pendienteSubida = true;
       }
 
-      // 2. Guardar en memoria de caché del teléfono
+      // 2. Guardar en caché local
       localStorage.setItem(obtenerClaveCache(), JSON.stringify(todosLosProductos));
 
-      // 3. Agregar a la cola de pendientes por subir
+      // 3. Añadir a cola de pendientes
       const pendientesKey = obtenerClavePendientes();
       let pendientes = JSON.parse(localStorage.getItem(pendientesKey) || "[]");
-      pendientes = pendientes.filter(item => item.codigo !== codigo); // Evitar duplicados
+      pendientes = pendientes.filter(item => item.codigo !== codigo);
       pendientes.push(objetoRegistro);
       localStorage.setItem(pendientesKey, JSON.stringify(pendientes));
 
@@ -215,7 +211,7 @@
       actualizarBadgePendientes();
       aplicarFiltros();
 
-      // 4. Si hay internet, intentar subir de una vez
+      // 4. Intentar subir si hay internet; si no, dejar guardado en local tranquilamente
       if (navigator.onLine) {
         subirPendientesLocales();
       } else {
@@ -243,17 +239,15 @@
             body: datos
           });
 
-          // Quitar de la cola una vez enviado
           pendientes = pendientes.filter(p => p.codigo !== item.codigo);
           localStorage.setItem(pendientesKey, JSON.stringify(pendientes));
 
-          // Desmarcar indicador visual de pendiente local
           const prod = todosLosProductos.find(p => p.codigo === item.codigo);
           if (prod) prod.pendienteSubida = false;
 
         } catch (e) {
           console.error("Error al subir pendiente:", item.codigo, e);
-          break; // Si falla la conexión a mitad de camino, detiene el ciclo
+          break;
         }
       }
 
@@ -393,7 +387,7 @@
         const estadoTexto = prod.chequeado ? 'Chequeado' : 'Pendiente';
         const estadoBadgeClase = prod.chequeado ? 'bg-success' : 'bg-warning text-dark';
 
-        const textoBoton = prod.chequeado ? 'Actualizar' : 'Guardar';
+        const textoBoton = prod.chequeado ? (prod.pendienteSubida ? 'Guardado Local' : 'Actualizar') : 'Guardar';
         const claseBoton = prod.chequeado ? 'btn-outline-primary' : 'btn-success';
         
         const pagoSheet = String(prod.formaPago || "").trim();
